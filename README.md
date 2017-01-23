@@ -15,8 +15,8 @@ When creating the service, make sure to mark **Text Analytics - Preview**.
 ## Setting Environment Variables
 
 ```sh
-APPINSIGHTS_INSTRUMENTATIONKEY=17b45976-7f04-4f49-a771-3446788959e0
-CG_SENTIMENT_KEY=d19acc35642b4ce4876199b8b39d6ba3
+APPINSIGHTS_INSTRUMENTATIONKEY={App Insights Instrumentation Key}
+CG_SENTIMENT_KEY={Cognitive Services Text Analytics Key}
 ```
 
 ## Connecting to Code
