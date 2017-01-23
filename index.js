@@ -4,8 +4,7 @@ var request = require('request');
 var builder = require('botbuilder');
 var appInsights = require("applicationinsights");
 
-appInsights.setup().start();
-var client = appInsights.getClient();
+var client = null;
 
 var _console = {};
 var _methods = {
@@ -16,11 +15,10 @@ var _methods = {
   "error":4
 };
 
-var _sentimentCollectionOn = true;
 var _sentimentMinWords = 3;
 var _sentimentUrl = 'https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/sentiment';
-var _sentimentId = 'morshe-bot';
-var _sentimentKey = 'd19acc35642b4ce4876199b8b39d6ba3';
+var _sentimentId = 'bot-analytics';
+var _sentimentKey = null;
 
 var Events = {
   ReceiveMessage: {
@@ -124,9 +122,25 @@ var setup = () => {
  * @param {UniversalBot} bot
  * @param {ConversionConfig} conversionConfig
  */
-var monitor = (bot, conversionConfig) => {
+var monitor = (bot, options) => {
 
-  conversionConfig = conversionConfig || [];
+  options = options || {};
+
+  if ((!options.instrumentationKey) &&
+      (!process.env.APPINSIGHTS_INSTRUMENTATIONKEY)){
+    throw new Error('App Insights instrumentation key was not provided in options or the environment variable APPINSIGHTS_INSTRUMENTATIONKEY');
+  }
+
+  appInsights.setup(options.instrumentationKey || process.env.APPINSIGHTS_INSTRUMENTATIONKEY).start();
+  client = appInsights.getClient();
+
+  if (!options.sentimentKey && !process.env.CG_SENTIMENT_KEY) {
+    console.warn('No sentiment key was provided - text sentiments will not be collected');
+  } else {
+    _sentimentKey = options.sentimentKey || process.env.CG_SENTIMENT_KEY;
+  }
+
+  var transactions = options.transactions || [];
   setup();
 
   if (bot) {
@@ -164,42 +178,6 @@ var monitor = (bot, conversionConfig) => {
         }
     });
   }
-
-  // Collect intents from LUIS
-  // builder.IntentDialog.prototype.matches = (function() {
-  //   var orig = builder.IntentDialog.prototype.matches;
-  //   return function (intent, dialogId, dialogArgs) {
-      
-  //     var _dialog = this;
-
-  //     try {
-  //       var _message = _session.message || {};
-  //       var _address = _message.address || {};
-  //       var _conversation = _address.conversation || {};
-  //       var _user = _address.user || {};
-  //       var _callstack = _session.sessionState.callstack;
-
-  //       var item = { 
-  //         intent: args && args.id,
-  //         state: args && args.state && JSON.stringify(args.state),
-  //         channel: _address.channelId,
-  //         conversationId: _conversation.id,
-  //         callstack_length: _callstack.length.toString(),
-  //         userId: _user.id,
-  //         userName: _user.name
-  //       };
-
-  //       _.take(_callstack, 3).forEach((stackItem, idx) => {
-  //         item[`callstack_${idx}_id`] = stackItem.id;
-  //         item[`callstack_${idx}_state`] = JSON.stringify(stackItem.state);
-  //       });
-
-  //       client.trackEvent("message.intent.dialog", item);
-  //     } catch (e) { }
-
-  //     orig.apply(_dialog, [intent, dialogId, dialogArgs]);
-  //   }
-  // })();
 
   // Monitoring new dialog calls like session.beginDialog
   // When beginning a new dialog, the framework uses pushDialog to change context 
@@ -248,7 +226,7 @@ var monitor = (bot, conversionConfig) => {
 
         var transactionEnded = false;
         var success = false;
-        var conversation = _.find(conversionConfig.transactions, { intent: _session.dialogData['transaction.id'] });
+        var conversation = _.find(transactions, { intent: _session.dialogData['transaction.id'] });
         if (conversation.intent != _session.dialogData['BotBuilder.Data.Intent']) {
           transactionEnded = true;
         } else {
@@ -303,7 +281,7 @@ var monitor = (bot, conversionConfig) => {
 
         client.trackEvent("message.intent.received", item);
 
-        conversionConfig.transactions.forEach(cc => {
+        transactions.forEach(cc => {
           if (cc.intent == item.intent) {
             startConverting(context, null);
             context.dialogData['transaction.started'] = true;
@@ -324,7 +302,7 @@ var collectSentiment = (session, text) => {
 
   text = text || '';
 
-  if (!_sentimentCollectionOn) return;
+  if (!_sentimentKey) return;
   if (text.match(/\S+/g).length < _sentimentMinWords) return;
   
   var _message = session.message || {};
