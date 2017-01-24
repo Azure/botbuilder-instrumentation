@@ -401,6 +401,26 @@ var endConverting = (session, name, successful, count) => {
   client.trackEvent(Events.ConversionEnded.name, item);
 }
 
+var measure = (session, name = 'default', count = 1) => {
+  var _message = session.message || {};
+  var _address = _message.address || {};
+  var _conversation = _address.conversation || {};
+  var _user = _address.user || {};
+  var _callstack = session.sessionState.callstack;
+
+  var item = {
+    count: count.toString(),
+    timestamp: _message.timestamp,
+    channel: _address.channelId,
+    conversationId: _conversation.id,
+    callstack_length: _callstack.length.toString(),
+    userId: _user.id,
+    userName: _user.name
+  };
+  client.trackEvent('custom-' + name, item);
+}
+
 module.exports = {
-  monitor
+  monitor,
+  measure
 }
