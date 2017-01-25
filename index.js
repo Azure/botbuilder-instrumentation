@@ -132,7 +132,7 @@ var monitor = (bot, options) => {
   }
 
   appInsights.setup(options.instrumentationKey || process.env.APPINSIGHTS_INSTRUMENTATIONKEY).start();
-  client = appInsights.getClient();
+  client = appInsights.getClient(options.instrumentationKey || process.env.APPINSIGHTS_INSTRUMENTATIONKEY);
 
   if (!options.sentimentKey && !process.env.CG_SENTIMENT_KEY) {
     console.warn('No sentiment key was provided - text sentiments will not be collected');
@@ -401,7 +401,9 @@ var endConverting = (session, name, successful, count) => {
   client.trackEvent(Events.ConversionEnded.name, item);
 }
 
-var measure = (session, name = 'default', count = 1) => {
+var measure = (session, name, count) => {
+  name = name || 'default';
+  count = count || 1;
   var _message = session.message || {};
   var _address = _message.address || {};
   var _conversation = _address.conversation || {};
@@ -409,7 +411,6 @@ var measure = (session, name = 'default', count = 1) => {
   var _callstack = session.sessionState.callstack;
 
   var item = {
-    count: count.toString(),
     timestamp: _message.timestamp,
     channel: _address.channelId,
     conversationId: _conversation.id,
@@ -417,7 +418,7 @@ var measure = (session, name = 'default', count = 1) => {
     userId: _user.id,
     userName: _user.name
   };
-  client.trackEvent('custom-' + name, item);
+  client.trackEvent('custom-' + name, item, { count });
 }
 
 module.exports = {
