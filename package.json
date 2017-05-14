@@ -1,6 +1,6 @@
 {
-  "name": "bot-fmk-logging",
-  "version": "1.0.0",
+  "name": "botbuilder-instrumentation",
+  "version": "1.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -9,8 +9,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "applicationinsights": "^0.17.1",
-    "botbuilder": "^3.4.4",
+    "applicationinsights": "^0.20.0",
+    "botbuilder": "3.7",
     "lodash": "^4.17.2",
     "request": "^2.79.0"
   }
