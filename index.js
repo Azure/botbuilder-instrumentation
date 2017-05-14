@@ -149,13 +149,22 @@ var monitor = (bot, options) => {
         botbuilder: function (session, next) {
 
             try {
-              var message = session.message || {};
-              client.trackEvent(Events.ReceiveMessage.name, { 
-                text: message.text, 
+              var message = session.message;
+              var address = message.address || {};
+              var conversation = address.conversation || {};
+              var user = address.user || {};
+
+              var item =  { 
+                text: message.text,
                 type: message.type,
                 timestamp: message.timestamp,
-                conversationId: message.address && message.address.conversation && message.address.conversation.id
-              });
+                conversationId: conversation.id,
+                channel: address.channelId,
+                userId: user.id,
+                userName: user.name
+              };
+              
+              client.trackEvent(Events.ReceiveMessage.name, item);
             } catch (e) { 
             } finally {
                 next();
