@@ -3,15 +3,17 @@
     "module": "commonjs",
     "target": "es6",
     "allowJs": true,
+    "outDir": "dist",
+    "rootDir": "src",
     "moduleResolution": "node",
     "forceConsistentCasingInFileNames": true,
     "noImplicitReturns": true,
     "noImplicitThis": false,
-    "noImplicitAny": false,
-    "checkJs": true
+    "noImplicitAny": false
   },
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "dist"
   ],
   "types": [
     "node_modules/@types"

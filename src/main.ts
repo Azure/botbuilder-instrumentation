@@ -1,7 +1,7 @@
 import * as util from 'util';
 import * as _ from 'lodash';
 import * as builder from 'botbuilder';
-import request from 'request';
+import * as request from 'request';
 import ApplicationInsights = require("applicationinsights");
 
 import Events from './events';
@@ -151,15 +151,19 @@ export class BotFrameworkInstrumentation {
 
   monitor (bot: builder.UniversalBot) {
 
-    ApplicationInsights.setup(this.settings.instrumentationKey).start();
+    ApplicationInsights.setup(this.settings.instrumentationKey)
+      .setAutoCollectConsole(true)
+      .setAutoCollectExceptions(true)
+      .setAutoCollectRequests(true)
+      .start();
     this.appInsightsClient = ApplicationInsights.getClient(this.settings.instrumentationKey);
 
-    this.setupConsoleCollection();
+    //this.setupConsoleCollection();
 
     // Adding middleware to intercept all user messages
     if (bot) {
       bot.use({
-        botbuilder: function (session, next) {
+        botbuilder: (session, next) => {
 
           try {
             let message: any = session.message;
@@ -278,6 +282,7 @@ export class BotFrameworkInstrumentation {
     
 
     // Collect intents collected from LUIS after entities were resolved
+    let self = this;
     builder.IntentDialog.prototype.recognize = (() => {
       let _recognize = builder.IntentDialog.prototype.recognize;
       return function(context, cb) {
@@ -314,7 +319,7 @@ export class BotFrameworkInstrumentation {
             userName: user.name
           };
 
-          this.appInsightsClient.trackEvent(Events.Intent.name, item);
+          self.appInsightsClient.trackEvent(Events.Intent.name, item);
 
           // transactions.forEach(cc => {
           //   if (cc.intent == item.intent) {
@@ -324,7 +329,7 @@ export class BotFrameworkInstrumentation {
           //   }
           // });
 
-          this.collectSentiment(context, message.text);
+          self.collectSentiment(context, message.text);
 
           // Todo: on "set alarm" utterence, failiure
           return cb(err, result);

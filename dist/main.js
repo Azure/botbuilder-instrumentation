@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const util = require("util");
 const _ = require("lodash");
 const builder = require("botbuilder");
-const request_1 = require("request");
+const request = require("request");
 const ApplicationInsights = require("applicationinsights");
 const events_1 = require("./events");
 class BotFrameworkInstrumentation {
@@ -71,7 +71,7 @@ class BotFrameworkInstrumentation {
         var _address = _message.address || {};
         var _conversation = _address.conversation || {};
         var _user = _address.user || {};
-        request_1.default({
+        request({
             url: this.settings.sentiments.url,
             method: 'POST',
             headers: {
@@ -115,13 +115,17 @@ class BotFrameworkInstrumentation {
         });
     }
     monitor(bot) {
-        ApplicationInsights.setup(this.settings.instrumentationKey).start();
+        ApplicationInsights.setup(this.settings.instrumentationKey)
+            .setAutoCollectConsole(true)
+            .setAutoCollectExceptions(true)
+            .setAutoCollectRequests(true)
+            .start();
         this.appInsightsClient = ApplicationInsights.getClient(this.settings.instrumentationKey);
-        this.setupConsoleCollection();
+        //this.setupConsoleCollection();
         // Adding middleware to intercept all user messages
         if (bot) {
             bot.use({
-                botbuilder: function (session, next) {
+                botbuilder: (session, next) => {
                     try {
                         let message = session.message;
                         let address = message.address || {};
@@ -224,6 +228,7 @@ class BotFrameworkInstrumentation {
         //   }
         // })();
         // Collect intents collected from LUIS after entities were resolved
+        let self = this;
         builder.IntentDialog.prototype.recognize = (() => {
             let _recognize = builder.IntentDialog.prototype.recognize;
             return function (context, cb) {
@@ -255,7 +260,7 @@ class BotFrameworkInstrumentation {
                             userId: user.id,
                             userName: user.name
                         };
-                        this.appInsightsClient.trackEvent(events_1.default.Intent.name, item);
+                        self.appInsightsClient.trackEvent(events_1.default.Intent.name, item);
                         // transactions.forEach(cc => {
                         //   if (cc.intent == item.intent) {
                         //     startConverting(context, null);
@@ -263,7 +268,7 @@ class BotFrameworkInstrumentation {
                         //     context.dialogData['transaction.id'] = cc.intent;
                         //   }
                         // });
-                        this.collectSentiment(context, message.text);
+                        self.collectSentiment(context, message.text);
                         // Todo: on "set alarm" utterence, failiure
                         return cb(err, result);
                     }]);
