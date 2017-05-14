@@ -268,15 +268,22 @@ var monitor = (bot, options) => {
         }
 
         var message = context.message;
+        var address = message.address || {};
+        var conversation = address.conversation || {};
+        var user = address.user || {};
+
         var item =  { 
           text: message.text,
           timestamp: message.timestamp,
           intent: result && result.intent, 
+          channel: address.channelId,
           score: result && result.score,
           entities: entities,
           withError: !err,
           error: err,
-          conversationId: message.address && message.address.conversation && message.address.conversation.id
+          conversationId: conversation.id,
+          userId: user.id,
+          userName: user.name
         };
 
         client.trackEvent("message.intent.received", item);
