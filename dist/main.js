@@ -8,7 +8,7 @@ const ApplicationInsights = require("applicationinsights");
 const events_1 = require("./events");
 class BotFrameworkInstrumentation {
     constructor(settings) {
-        this.appInsightsClient = null;
+        this.appInsightsClient = ApplicationInsights.client;
         this.console = {};
         this.methods = {
             "debug": 0,
@@ -234,15 +234,6 @@ class BotFrameworkInstrumentation {
             return function (context, cb) {
                 let _dialog = this;
                 _recognize.apply(_dialog, [context, (err, result) => {
-                        var entities = [];
-                        if (result && result.entities) {
-                            result.entities.forEach(value => {
-                                entities.push({
-                                    type: value.type,
-                                    entity: value.entity
-                                });
-                            });
-                        }
                         let message = context.message;
                         let address = message.address || {};
                         let conversation = address.conversation || {};
@@ -253,7 +244,6 @@ class BotFrameworkInstrumentation {
                             intent: result && result.intent,
                             channel: address.channelId,
                             score: result && result.score,
-                            entities: entities,
                             withError: !err,
                             error: err,
                             conversationId: conversation.id,
@@ -261,13 +251,15 @@ class BotFrameworkInstrumentation {
                             userName: user.name
                         };
                         self.appInsightsClient.trackEvent(events_1.default.Intent.name, item);
-                        // transactions.forEach(cc => {
-                        //   if (cc.intent == item.intent) {
-                        //     startConverting(context, null);
-                        //     context.dialogData['transaction.started'] = true;
-                        //     context.dialogData['transaction.id'] = cc.intent;
-                        //   }
-                        // });
+                        // Tracking entities for the event
+                        if (result && result.entities) {
+                            result.entities.forEach(value => {
+                                let entityItem = _.clone(item);
+                                entityItem.entityType = value.type;
+                                entityItem.entityValue = value.entity;
+                                self.appInsightsClient.trackEvent(events_1.default.Entity.name, entityItem);
+                            });
+                        }
                         self.collectSentiment(context, message.text);
                         // Todo: on "set alarm" utterence, failiure
                         return cb(err, result);

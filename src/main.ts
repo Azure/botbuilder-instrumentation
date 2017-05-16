@@ -18,7 +18,7 @@ export interface IInstrumentationSettings {
 
 export class BotFrameworkInstrumentation {
 
-  private appInsightsClient = null;
+  private appInsightsClient = ApplicationInsights.client;
 
   private console = {};
   private methods = {
@@ -290,28 +290,17 @@ export class BotFrameworkInstrumentation {
         let _dialog = this;
         _recognize.apply(_dialog, [context, (err, result) => {
 
-          var entities = [];
-          if (result && result.entities) {
-            result.entities.forEach(value => {
-              entities.push({
-                type: value.type,
-                entity: value.entity
-              })
-            });
-          }
-
           let message = context.message;
           let address = message.address || {};
           let conversation = address.conversation || {};
           let user = address.user || {};
 
-          let item =  { 
+          let item: any =  { 
             text: message.text,
             timestamp: message.timestamp,
             intent: result && result.intent, 
             channel: address.channelId,
             score: result && result.score,
-            entities: entities,
             withError: !err,
             error: err,
             conversationId: conversation.id,
@@ -321,13 +310,17 @@ export class BotFrameworkInstrumentation {
 
           self.appInsightsClient.trackEvent(Events.Intent.name, item);
 
-          // transactions.forEach(cc => {
-          //   if (cc.intent == item.intent) {
-          //     startConverting(context, null);
-          //     context.dialogData['transaction.started'] = true;
-          //     context.dialogData['transaction.id'] = cc.intent;
-          //   }
-          // });
+          // Tracking entities for the event
+          if (result && result.entities) {
+            result.entities.forEach(value => {
+
+              let entityItem = _.clone(item);
+              entityItem.entityType = value.type;
+              entityItem.entityValue = value.entity
+              self.appInsightsClient.trackEvent(Events.Entity.name, entityItem);
+
+            });
+          }
 
           self.collectSentiment(context, message.text);
 

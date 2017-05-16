@@ -59,6 +59,20 @@ exports.default = {
             userName: 'user.name'
         }
     },
+    Entity: {
+        name: 'MBFEvent.Entity',
+        format: {
+            intent: 'intent name / id / string',
+            entityType: 'entity type',
+            entityValue: 'entity value',
+            state: 'current session state',
+            channel: 'address.channelId',
+            conversationId: 'conversation.id',
+            callstack_length: 'callstack.length',
+            userId: 'user.id',
+            userName: 'user.name'
+        }
+    },
     Sentiment: {
         name: 'MBFEvent.Sentiment',
         format: {
