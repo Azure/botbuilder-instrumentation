@@ -31,3 +31,5 @@ let logging = new instrumentation.BotFrameworkInstrumentation({
 });
 logging.monitor(bot);
 ```
+
+You can see a working sample in [https://github.com/morsh/bot-with-instrumentation](https://github.com/morsh/bot-with-instrumentation)
