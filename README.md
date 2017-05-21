@@ -22,12 +22,12 @@ CG_SENTIMENT_KEY={Cognitive Services Text Analytics Key}
 ## Connecting to Code
 
 ```js
-var logging = require('bot-fmk-logging');
+var instrumentation = require('botbuilder-instrumentation');
 
-logging.monitor(bot, { transactions: [
-    {
-        intent: 'alarm.set',
-        test: /^(Creating alarm named)/i
-    }
-]});
+// Setting up advanced instrumentation
+let logging = new instrumentation.BotFrameworkInstrumentation({ 
+  instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATIONKEY,
+  sentimentKey: process.env.CG_SENTIMENT_KEY,
+});
+logging.monitor(bot);
 ```

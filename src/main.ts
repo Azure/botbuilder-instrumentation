@@ -95,10 +95,11 @@ export class BotFrameworkInstrumentation {
     if (!this.settings.sentiments.key) return;
     if (text.match(/\S+/g).length < this.settings.sentiments.minWords) return;
     
-    var _message = session.message || {};
-    var _address = _message.address || {};
-    var _conversation = _address.conversation || {};
-    var _user = _address.user || {};
+    let message = session.message || {};
+    let timestamp = message.timestamp;
+    let address = message.address || {};
+    let conversation = address.conversation || {};
+    let user = address.user || {};
     
     request({
       url: this.settings.sentiments.url,
@@ -135,11 +136,11 @@ export class BotFrameworkInstrumentation {
         var item = { 
           text: text, 
           score: score,
-          timestamp: _message.timestamp,
-          channel: _address.channelId,
-          conversationId: _conversation.id,
-          userId: _user.id,
-          userName: _user.name
+          timestamp: timestamp,
+          channel: address.channelId,
+          conversationId: conversation.id,
+          userId: user.id,
+          userName: user.name
         };
 
         this.appInsightsClient.trackEvent(Events.Sentiment.name, item);
