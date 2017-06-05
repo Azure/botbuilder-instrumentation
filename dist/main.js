@@ -142,6 +142,7 @@ class BotFrameworkInstrumentation {
                             userName: user.name
                         };
                         this.appInsightsClient.trackEvent(events_1.default.UserMessage.name, item);
+                        self.collectSentiment(session, message.text);
                     }
                     catch (e) {
                     }
@@ -151,16 +152,18 @@ class BotFrameworkInstrumentation {
                 },
                 send: (message, next) => {
                     try {
-                        let address = message.address || {};
-                        let conversation = address.conversation || {};
-                        let user = address.user || {};
-                        let item = {
-                            text: message.text,
-                            type: message.type,
-                            timestamp: message.timestamp,
-                            conversationId: conversation.id
-                        };
-                        this.appInsightsClient.trackEvent(events_1.default.BotMessage.name, item);
+                        if (message.type == "message") {
+                            let address = message.address || {};
+                            let conversation = address.conversation || {};
+                            let user = address.user || {};
+                            let item = {
+                                text: message.text,
+                                type: message.type,
+                                timestamp: message.timestamp,
+                                conversationId: conversation.id
+                            };
+                            this.appInsightsClient.trackEvent(events_1.default.BotMessage.name, item);
+                        }
                     }
                     catch (e) {
                     }
@@ -261,7 +264,6 @@ class BotFrameworkInstrumentation {
                                 self.appInsightsClient.trackEvent(events_1.default.Entity.name, entityItem);
                             });
                         }
-                        self.collectSentiment(context, message.text);
                         // Todo: on "set alarm" utterence, failiure
                         return cb(err, result);
                     }]);
