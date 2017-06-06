@@ -183,6 +183,7 @@ export class BotFrameworkInstrumentation {
             };
             
             this.appInsightsClient.trackEvent(Events.UserMessage.name, item);
+            self.collectSentiment(session, message.text);
           } catch (e) { 
           } finally {
               next();
@@ -190,19 +191,20 @@ export class BotFrameworkInstrumentation {
         },
         send: (message: any, next: (err?: Error) => void) => {
           try {
+            if(message.type == "message"){
+              let address = message.address || {};
+              let conversation = address.conversation || {};
+              let user = address.user || {};  
 
-            let address = message.address || {};
-            let conversation = address.conversation || {};
-            let user = address.user || {};
+              let item =  { 
+                text: message.text,
+                type: message.type,
+                timestamp: message.timestamp,
+                conversationId: conversation.id
+              };
 
-            let item =  { 
-              text: message.text,
-              type: message.type,
-              timestamp: message.timestamp,
-              conversationId: conversation.id
-            };
-
-            this.appInsightsClient.trackEvent(Events.BotMessage.name, item);
+              this.appInsightsClient.trackEvent(Events.BotMessage.name, item);
+            }
           } catch (e) {
           }
           finally {
@@ -322,8 +324,6 @@ export class BotFrameworkInstrumentation {
 
             });
           }
-
-          self.collectSentiment(context, message.text);
 
           // Todo: on "set alarm" utterence, failiure
           return cb(err, result);
