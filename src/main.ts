@@ -19,7 +19,6 @@ export interface IInstrumentationSettings {
 
 export class BotFrameworkInstrumentation {
 
-  //private appInsightsClient = ApplicationInsights.client;
   private appInsightsClients:Array<typeof ApplicationInsights.client>;
 
   private console = {};
@@ -330,59 +329,54 @@ export class BotFrameworkInstrumentation {
    * @param tagOverrides      the context tags to use for this telemetry which overwrite default context values
    * @param contextObjects    map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
    */
-  private trackEvent(name: string, properties?: {
-      [key: string]: string;
-    }, measurements?: {
-      [key: string]: number;
-    }, tagOverrides?: {
-      [key: string]: string;
-    }, contextObjects?: {
-      [name: string]: any;
-    }): void {
+  private trackEvent(
+    name: string, 
+    properties?: {[key: string]: string;}, 
+    measurements?: {[key: string]: number;}, 
+    tagOverrides?: {[key: string]: string;}, 
+    contextObjects?: {[name: string]: any;}): void 
+  {
     _.forEach(this.appInsightsClients, (client) => {
       client.trackEvent(Events.EndTransaction.name, properties);
     });
-
   }
-    /**
-     * Log a trace message
-     * @param message        A string to identify this event in the portal.
-     * @param properties     map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
-     * @param tagOverrides   the context tags to use for this telemetry which overwrite default context values
-     * @param contextObjects map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
-     */
-    private trackTrace(
-      message: string, 
-      severityLevel?: any, 
-      properties?: { [key: string]: string; }, 
-      tagOverrides?: {
-        [key: string]: string;
-    }, contextObjects?: {
-        [name: string]: any;
-    }): void {
-      _.forEach(this.appInsightsClients, (client) => {
-        client.trackTrace(Events.EndTransaction.name, severityLevel, properties);
-      });
-    }
-    /**
-     * Log an exception you have caught.
-     * @param   exception   An Error from a catch clause, or the string error message.
-     * @param   properties  map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
-     * @param   measurements    map[string, number] - metrics associated with this event, displayed in Metrics Explorer on the portal. Defaults to empty.
-     * @param   tagOverrides the context tags to use for this telemetry which overwrite default context values
-     * @param   contextObjects        map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
-     */
-    private trackException(exception: Error, properties?: {
-        [key: string]: string;
-    }, measurements?: {
-        [key: string]: number;
-    }, tagOverrides?: {
-        [key: string]: string;
-    }, contextObjects?: {
-        [name: string]: any;
-    }): void {
-      _.forEach(this.appInsightsClients, (client) => {
-        client.trackException(exception, properties);
-      });
-    }
+
+  /**
+   * Log a trace message
+   * @param message        A string to identify this event in the portal.
+   * @param properties     map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
+   * @param tagOverrides   the context tags to use for this telemetry which overwrite default context values
+   * @param contextObjects map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
+   */
+  private trackTrace(
+    message: string, 
+    severityLevel?: any, 
+    properties?: { [key: string]: string; }, 
+    tagOverrides?: { [key: string]: string; }, 
+    contextObjects?: { [name: string]: any; }): void 
+  {
+    _.forEach(this.appInsightsClients, (client) => {
+      client.trackTrace(Events.EndTransaction.name, severityLevel, properties);
+    });
+  }
+
+  /**
+   * Log an exception you have caught.
+   * @param   exception   An Error from a catch clause, or the string error message.
+   * @param   properties  map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
+   * @param   measurements    map[string, number] - metrics associated with this event, displayed in Metrics Explorer on the portal. Defaults to empty.
+   * @param   tagOverrides the context tags to use for this telemetry which overwrite default context values
+   * @param   contextObjects        map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
+   */
+  private trackException(
+    exception: Error, 
+    properties?: { [key: string]: string; }, 
+    measurements?: { [key: string]: number; }, 
+    tagOverrides?: { [key: string]: string; }, 
+    contextObjects?: { [name: string]: any; }): void 
+  {
+    _.forEach(this.appInsightsClients, (client) => {
+      client.trackException(exception, properties);
+    });
+  }
 }

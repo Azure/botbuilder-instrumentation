@@ -32,4 +32,17 @@ let logging = new instrumentation.BotFrameworkInstrumentation({
 logging.monitor(bot);
 ```
 
+## Using mutiple instumentation keys
+
+```js
+var instrumentation = require('botbuilder-instrumentation');
+
+// Setting up advanced instrumentation
+let logging = new instrumentation.BotFrameworkInstrumentation({ 
+  instrumentationKey: ["main insturmnation key","secondary instumentation key"],
+  sentimentKey: process.env.CG_SENTIMENT_KEY,
+});
+logging.monitor(bot);
+```
+
 You can see a working sample in [https://github.com/morsh/bot-with-instrumentation](https://github.com/morsh/bot-with-instrumentation)
