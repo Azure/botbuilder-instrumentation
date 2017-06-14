@@ -221,7 +221,9 @@ export class BotFrameworkInstrumentation {
                 text: message.text,
                 type: message.type,
                 timestamp: message.timestamp,
-                conversationId: conversation.id
+                conversationId: conversation.id,
+                userId: user.id,
+                userName: user.name
               };
 
               this.trackEvent(Events.BotMessage.name, item);
@@ -261,8 +263,11 @@ export class BotFrameworkInstrumentation {
             userId: user.id,
             userName: user.name
           };
-
-          self.trackEvent(Events.Intent.name, item);
+          
+          //there is no point sending 0 score intents to the telemetry.
+          if (item.score > 0) {
+            self.trackEvent(Events.Intent.name, item);
+          }
 
           // Tracking entities for the event
           if (result && result.entities) {
@@ -322,6 +327,58 @@ export class BotFrameworkInstrumentation {
   }
 
   /**
+   * Logs QNA maker service data
+   * @param context 
+   * @param userQuery 
+   * @param kbQuestion 
+   * @param kbAnswer 
+   * @param score 
+   */
+  trackQNAEvent(context:any, userQuery:string, kbQuestion:string, kbAnswer:string, score:any) {
+    let message = context.message;
+    let address = message.address || {};
+    let conversation = address.conversation || {};
+    let user = address.user || {};
+
+    let item = {
+      score: score,
+      timestamp: message.timestamp,
+      channel: address.channelId,
+      conversationId: conversation.id,
+      userId: user.id,
+      userName: user.name,
+      userQuery: userQuery,
+      kbQuestion: kbQuestion,
+      kbAnswer: kbAnswer
+    };
+
+    this.trackEvent(Events.QnaEvent.name, item);
+  }
+
+  /**
+   * Logs your own event with custom data
+   * @param context 
+   * @param eventName 
+   * @param keyValuePair an object with custom properties
+   */
+  trackCustomEvent(context, eventName: string, keyValuePair: any) {
+    let message = context.message;
+    let address = message.address || {};
+    let conversation = address.conversation || {};
+    let user = address.user || {};
+    let item = {
+      timestamp: message.timestamp,
+      channel: address.channelId,
+      conversationId: conversation.id,
+      userId: user.id,
+      userName: user.name
+    };
+    //merge the custom properties with the defaults
+    let eventData = Object.assign(item, keyValuePair);
+    this.trackEvent(eventName, eventData);
+  }
+
+  /**
    * Log a user action or other occurrence.
    * @param name              A string to identify this event in the portal.
    * @param properties        map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
@@ -334,8 +391,7 @@ export class BotFrameworkInstrumentation {
     properties?: {[key: string]: string;}, 
     measurements?: {[key: string]: number;}, 
     tagOverrides?: {[key: string]: string;}, 
-    contextObjects?: {[name: string]: any;}): void 
-  {
+    contextObjects?: {[name: string]: any;}): void   {
     _.forEach(this.appInsightsClients, (client) => {
       client.trackEvent(Events.EndTransaction.name, properties);
     });
@@ -353,8 +409,7 @@ export class BotFrameworkInstrumentation {
     severityLevel?: any, 
     properties?: { [key: string]: string; }, 
     tagOverrides?: { [key: string]: string; }, 
-    contextObjects?: { [name: string]: any; }): void 
-  {
+    contextObjects?: { [name: string]: any; }): void {
     _.forEach(this.appInsightsClients, (client) => {
       client.trackTrace(Events.EndTransaction.name, severityLevel, properties);
     });
@@ -373,8 +428,7 @@ export class BotFrameworkInstrumentation {
     properties?: { [key: string]: string; }, 
     measurements?: { [key: string]: number; }, 
     tagOverrides?: { [key: string]: string; }, 
-    contextObjects?: { [name: string]: any; }): void 
-  {
+    contextObjects?: { [name: string]: any; }): void {
     _.forEach(this.appInsightsClients, (client) => {
       client.trackException(exception, properties);
     });

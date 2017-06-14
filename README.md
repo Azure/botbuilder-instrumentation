@@ -32,7 +32,7 @@ let logging = new instrumentation.BotFrameworkInstrumentation({
 logging.monitor(bot);
 ```
 
-## Using mutiple instumentation keys
+## Using mutiple instrumnetation keys
 
 ```js
 var instrumentation = require('botbuilder-instrumentation');
@@ -43,6 +43,39 @@ let logging = new instrumentation.BotFrameworkInstrumentation({
   sentimentKey: process.env.CG_SENTIMENT_KEY,
 });
 logging.monitor(bot);
+```
+
+## Sending logs for QnA maker service
+
+```js
+var instrumentation = require('botbuilder-instrumentation');
+
+// Setting up advanced instrumentation
+let logging = new instrumentation.BotFrameworkInstrumentation({ 
+  instrumentationKey: ["main insturmnation key","secondary instumentation key"],
+  sentimentKey: process.env.CG_SENTIMENT_KEY,
+});
+logging.monitor(bot);
+
+//hook into the result function of QNA to extract relevant data for logging.
+loggins.trackQNAEvent(context, userQuery, kbQuestion, kbAnswer, score);
+//You can see a working sample in [https://github.com/Microsoft/BotBuilder-CognitiveServices/tree/master/Node/samples/QnAMakerWithFunctionOverrides](https://github.com/Microsoft/BotBuilder-CognitiveServices/tree/master/Node/samples/QnAMakerWithFunctionOverrides)
+```
+
+## Sending custom event data
+
+```js
+var instrumentation = require('botbuilder-instrumentation');
+
+// Setting up advanced instrumentation
+let logging = new instrumentation.BotFrameworkInstrumentation({ 
+  instrumentationKey: ["main insturmnation key","secondary instumentation key"],
+  sentimentKey: process.env.CG_SENTIMENT_KEY,
+});
+logging.monitor(bot);
+let customEventName = 'myCustomEventName'; //This will show up as the event name in Application Insights.
+let customEventData = { customeDataA: 'customValueA', customDataB: 3 };
+logging.trackCustomEvent(context, customEventName, customEventData); //Custom key-value data. It will be avaiable under the customDimentions column in Application Insights.
 ```
 
 You can see a working sample in [https://github.com/morsh/bot-with-instrumentation](https://github.com/morsh/bot-with-instrumentation)
