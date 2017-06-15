@@ -3,13 +3,16 @@
     "module": "commonjs",
     "target": "es6",
     "allowJs": true,
-    "outDir": "dist",
-    "rootDir": "src",
+    "outDir": "dist/",
+    "rootDir": "src/",
     "moduleResolution": "node",
+    "removeComments": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitReturns": true,
     "noImplicitThis": false,
-    "noImplicitAny": false
+    "noImplicitAny": false,
+    "sourceMap": true,
+    "mapRoot": "dist/"
   },
   "exclude": [
     "node_modules",

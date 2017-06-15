@@ -86,4 +86,4 @@ exports.default = {
         }
     }
 };
-//# sourceMappingURL=/Users/claudius/Documents/workspace/Bots/botbuilder-instrumentation/dist/events.js.map
+//# sourceMappingURL=events.js.map

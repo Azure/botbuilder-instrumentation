@@ -107,11 +107,6 @@ var setup = () => {
         })();
     });
 };
-/**
- * Monitor requests made to the bot framework
- * @param {UniversalBot} bot
- * @param {ConversionConfig} conversionConfig
- */
 var monitor = (bot, options) => {
     options = options || {};
     if ((!options.instrumentationKey) &&
@@ -129,7 +124,6 @@ var monitor = (bot, options) => {
     var transactions = options.transactions || [];
     setup();
     if (bot) {
-        // Adding middleware to intercept all received messages
         bot.use({
             botbuilder: function (session, next) {
                 try {
@@ -172,10 +166,6 @@ var monitor = (bot, options) => {
             }
         });
     }
-    // Monitoring new dialog calls like session.beginDialog
-    // When beginning a new dialog, the framework uses pushDialog to change context 
-    // to a new dialog
-    // Todo: Check alternative as <builder.SimpleDialog.prototype.begin>
     builder.Session.prototype.pushDialog = (function () {
         var orig = builder.Session.prototype.pushDialog;
         return function (args) {
@@ -202,7 +192,6 @@ var monitor = (bot, options) => {
             orig.apply(_session, [args]);
         };
     })();
-    // Capture message session before send
     builder.Session.prototype.prepareMessage = (function () {
         var orig = builder.Session.prototype.prepareMessage;
         return function (msg) {
@@ -231,7 +220,6 @@ var monitor = (bot, options) => {
             return res;
         };
     })();
-    // Collect intents collected from LUIS after entities were resolved
     builder.IntentDialog.prototype.recognize = (function () {
         var _recognize = builder.IntentDialog.prototype.recognize;
         return function (context, cb) {
@@ -272,7 +260,6 @@ var monitor = (bot, options) => {
                         }
                     });
                     collectSentiment(context, message.text);
-                    // Todo: on "set alarm" utterence, failiure
                     return cb(err, result);
                 }]);
         };
@@ -390,3 +377,4 @@ module.exports = {
     monitor,
     measure
 };
+//# sourceMappingURL=/Users/claudius/Documents/workspace/Bots/botbuilder-instrumentation/dist/index.js.map

@@ -17,9 +17,17 @@ export interface IInstrumentationSettings {
   sentiments?: ISentimentSettings;
 }
 
+export const currentBotName = "currentBotName";
+
+export function setCurrentBotName(session: any, botName: string): any {
+  session.dialogData[currentBotName] = botName;
+  return session;
+}
+
 export class BotFrameworkInstrumentation {
 
-  private appInsightsClients:Array<typeof ApplicationInsights.client>;
+  private appInsightsClient: typeof ApplicationInsights.client;
+  private currentBot: string;
 
   private console = {};
   private methods = {
@@ -27,38 +35,26 @@ export class BotFrameworkInstrumentation {
     "info": 1,
     "log": 2,
     "warn": 3,
-    "error":4
+    "error": 4
   };
 
-  private instrumentationKeys: string[] = [];
-  private sentiments: {
-      minWords: 3,
-      url: 'https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/sentiment',
-      id: 'bot-analytics',
-      key: null
-    };
+  private instrumentationKey: string;
+  private sentiments: ISentimentSettings = {
+    minWords: 3,
+    url: 'https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/sentiment',
+    id: 'bot-analytics',
+    key: null
+  };
 
   constructor(settings?: IInstrumentationSettings) {
 
     settings = settings || {};
     _.extend(this.sentiments, settings.sentiments);
 
-    this.sentiments.key = this.sentiments.key || process.env.CG_SENTIMENT_KEY;
+    this.sentiments.key = (this.sentiments) ? this.sentiments.key : process.env.CG_SENTIMENT_KEY;
+    this.instrumentationKey = settings.instrumentationKey || process.env.APPINSIGHTS_INSTRUMENTATIONKEY
 
-    if (settings.instrumentationKey) {
-
-      this.instrumentationKeys = 
-          Array.isArray(settings.instrumentationKey) ?
-          settings.instrumentationKey : 
-          [ settings.instrumentationKey ];
-    } 
-    else {
-      if (process.env.APPINSIGHTS_INSTRUMENTATIONKEY) {
-        this.instrumentationKeys = [process.env.APPINSIGHTS_INSTRUMENTATIONKEY];
-      }
-    }
-
-    if (!this.instrumentationKeys) {
+    if (!this.instrumentationKey) {
       throw new Error('App Insights instrumentation key was not provided in options or the environment variable APPINSIGHTS_INSTRUMENTATIONKEY');
     }
 
@@ -79,12 +75,12 @@ export class BotFrameworkInstrumentation {
 
       console[method] = (() => {
         let original = console.log;
-        
+
         return (...args) => {
 
-          let stdout = null;
+          let stdout: any;
           try {
-            
+
             let msg = this.formatArgs(args);
             this.trackTrace(msg, this.methods[method]);
 
@@ -95,23 +91,21 @@ export class BotFrameworkInstrumentation {
             process.stdout = stdout || process.stdout;
           }
         };
-      })();      
+      })();
     });
   }
-  
-  private collectSentiment(session: any, text: string) {
 
-    text = text || '';
+  private collectSentiment(session: any, text: string) {
 
     if (!this.sentiments.key) return;
     if (text.match(/\S+/g).length < this.sentiments.minWords) return;
-    
+
     let message = session.message || {};
     let timestamp = message.timestamp;
     let address = message.address || {};
     let conversation = address.conversation || {};
     let user = address.user || {};
-    
+
     request({
       url: this.sentiments.url,
       method: 'POST',
@@ -129,56 +123,53 @@ export class BotFrameworkInstrumentation {
           }
         ]
       }
-    }, 
-    (error, response, body) => {
+    },
+      (error, response, body) => {
 
-      if (error) {
-        return this.trackException(error);
-      }
-
-      try {
-        let result: any = _.find(body.documents, { id: this.sentiments.id }) || {};
-        var score = result.score || null;
-
-        if (isNaN(score)) {
-          throw new Error('Could not collect sentiment');
+        if (error) {
+          return this.trackException(error);
         }
 
-        var item = { 
-          text: text, 
-          score: score,
-          timestamp: timestamp,
-          channel: address.channelId,
-          conversationId: conversation.id,
-          userId: user.id,
-          userName: user.name
-        };
+        try {
+          let result: any = _.find(body.documents, { id: this.sentiments.id }) || {};
+          var score = result.score || null;
 
-        this.trackEvent(Events.Sentiment.name, item);
-      } catch (error) {
-        return this.trackException(error);
-      }
-    });
+          if (isNaN(score)) {
+            throw new Error('Could not collect sentiment');
+          }
+
+          var item = {
+            text: text,
+            score: score,
+            timestamp: timestamp,
+            channel: address.channelId,
+            conversationId: conversation.id,
+            userId: user.id,
+            userName: user.name
+          };
+
+          this.trackEvent(Events.Sentiment.name, item);
+        } catch (error) {
+          return this.trackException(error);
+        }
+      });
   }
 
   private setupInstrumentation() {
-    if (this.instrumentationKeys && this.instrumentationKeys.length > 0) {
-      //we are setting the automatic updates to the first instumentation key.
-      ApplicationInsights.setup(this.instrumentationKeys[0])
-        .setAutoCollectConsole(true)
-        .setAutoCollectExceptions(true)
-        .setAutoCollectRequests(true)
-        .start();
+    //we are setting the automatic updates to the first instumentation key.
+    // console.log("INSTRUMENTATION KEY: ", this.instrumentationKey)
 
-      //for all other custom events, traces etc, we are initiazling application insight clients accordignly.
-      _.forEach(this.instrumentationKeys, (iKey) => {
-        let client = ApplicationInsights.getClient(iKey);
-        this.appInsightsClients.push(client);
-      });
-    }
+    ApplicationInsights.setup(this.instrumentationKey)
+      .setAutoCollectConsole(true)
+      .setAutoCollectExceptions(true)
+      .setAutoCollectRequests(true)
+      .setAutoCollectPerformance(true)
+      .start();
+
+    this.appInsightsClient = ApplicationInsights.getClient(this.instrumentationKey);
   }
 
-  monitor (bot: builder.UniversalBot) {
+  monitor(bot: builder.UniversalBot, customFields?: Object) {
 
     this.setupInstrumentation();
 
@@ -186,46 +177,55 @@ export class BotFrameworkInstrumentation {
     if (bot) {
       bot.use({
         botbuilder: (session, next) => {
-
           try {
             let message: any = session.message;
             let address = message.address || {};
             let conversation = address.conversation || {};
             let user = address.user || {};
-
-            let item =  { 
+            this.currentBot = session.dialogData[currentBotName] || session.library.name;
+            let item = {
               text: message.text,
               type: message.type,
               timestamp: message.timestamp,
               conversationId: conversation.id,
               channel: address.channelId,
               userId: user.id,
-              userName: user.name
+              userName: user.name,
+              locale: session.preferredLocale(),
+              botName: this.currentBot
             };
-            
+
+            console.log("\nBOTNAME: ", item.botName, "\n")
+
+            if (customFields) {
+              for (var key in customFields) {
+                item[key] = customFields[key];
+              }
+            }
+
+
             this.trackEvent(Events.UserMessage.name, item);
             self.collectSentiment(session, message.text);
-          } catch (e) { 
-          } finally {
-              next();
+          } catch (e) {
+          }
+          finally {
+            next();
           }
         },
         send: (message: any, next: (err?: Error) => void) => {
           try {
-            if(message.type == "message"){
-              let address = message.address || {};
-              let conversation = address.conversation || {};
-              let user = address.user || {};  
+            let address = message.address || {};
+            let conversation = address.conversation || {};
+            let user = address.user || {};
 
-              let item =  { 
-                text: message.text,
-                type: message.type,
-                timestamp: message.timestamp,
-                conversationId: conversation.id
-              };
-
-              this.trackEvent(Events.BotMessage.name, item);
-            }
+            let item = {
+              text: message.text,
+              type: message.type,
+              timestamp: message.timestamp,
+              conversationId: conversation.id,
+              botName: this.currentBot
+            };
+            this.trackEvent(Events.BotMessage.name, item);
           } catch (e) {
           }
           finally {
@@ -239,7 +239,7 @@ export class BotFrameworkInstrumentation {
     let self = this;
     builder.IntentDialog.prototype.recognize = (() => {
       let _recognize = builder.IntentDialog.prototype.recognize;
-      return function(context, cb) {
+      return function (context, cb) {
 
         let _dialog = this;
         _recognize.apply(_dialog, [context, (err, result) => {
@@ -249,10 +249,10 @@ export class BotFrameworkInstrumentation {
           let conversation = address.conversation || {};
           let user = address.user || {};
 
-          let item: any =  { 
+          let item: any = {
             text: message.text,
             timestamp: message.timestamp,
-            intent: result && result.intent, 
+            intent: result && result.intent,
             channel: address.channelId,
             score: result && result.score,
             withError: !err,
@@ -267,20 +267,18 @@ export class BotFrameworkInstrumentation {
           // Tracking entities for the event
           if (result && result.entities) {
             result.entities.forEach(value => {
-
               let entityItem = _.clone(item);
               entityItem.entityType = value.type;
               entityItem.entityValue = value.entity
               self.trackEvent(Events.Entity.name, entityItem);
-
             });
           }
 
           // Todo: on "set alarm" utterence, failiure
           return cb(err, result);
-        }]);          
+        }]);
       };
-    })();  
+    })();
   }
 
   startTransaction(context: any, name = '') {
@@ -321,6 +319,14 @@ export class BotFrameworkInstrumentation {
     this.trackEvent(Events.EndTransaction.name, item);
   }
 
+  public logCustomEvent(eventName: string, properties?: { [key: string]: string }) {
+    this.trackEvent(eventName, properties);
+  }
+
+  public logCustomError(error: Error, properties?: { [key: string]: string }) {
+    this.trackException(error, properties);
+  }
+
   /**
    * Log a user action or other occurrence.
    * @param name              A string to identify this event in the portal.
@@ -330,15 +336,13 @@ export class BotFrameworkInstrumentation {
    * @param contextObjects    map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
    */
   private trackEvent(
-    name: string, 
-    properties?: {[key: string]: string;}, 
-    measurements?: {[key: string]: number;}, 
-    tagOverrides?: {[key: string]: string;}, 
-    contextObjects?: {[name: string]: any;}): void 
-  {
-    _.forEach(this.appInsightsClients, (client) => {
-      client.trackEvent(Events.EndTransaction.name, properties);
-    });
+    name: string,
+    properties?: { [key: string]: string; },
+    measurements?: { [key: string]: number; },
+    tagOverrides?: { [key: string]: string; },
+    contextObjects?: { [name: string]: any; }): void {
+    console.log("\nTRACK EVENT -------\nCLIENT: ", this.instrumentationKey, "\nEVENT: ", name, "\nPROPS: ", JSON.stringify(properties, null, 2), "\nTRACK EVENT -------\n")
+    this.appInsightsClient.trackEvent(name, properties, measurements, tagOverrides, contextObjects);
   }
 
   /**
@@ -349,15 +353,13 @@ export class BotFrameworkInstrumentation {
    * @param contextObjects map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
    */
   private trackTrace(
-    message: string, 
-    severityLevel?: any, 
-    properties?: { [key: string]: string; }, 
-    tagOverrides?: { [key: string]: string; }, 
-    contextObjects?: { [name: string]: any; }): void 
-  {
-    _.forEach(this.appInsightsClients, (client) => {
-      client.trackTrace(Events.EndTransaction.name, severityLevel, properties);
-    });
+    message: string,
+    severityLevel?: any,
+    properties?: { [key: string]: string; },
+    tagOverrides?: { [key: string]: string; },
+    contextObjects?: { [name: string]: any; }): void {
+    console.log("\nTRACK TRACE -------\nCLIENT: ", this.instrumentationKey, "\nEVENT: ", message, "\nSEC-LEVEL: ", severityLevel, "\nPROPS: ", JSON.stringify(properties, null, 2), "\nTRACK TRACE -------\n")
+    this.appInsightsClient.trackTrace(message, severityLevel, properties, tagOverrides, contextObjects);
   }
 
   /**
@@ -369,14 +371,12 @@ export class BotFrameworkInstrumentation {
    * @param   contextObjects        map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
    */
   private trackException(
-    exception: Error, 
-    properties?: { [key: string]: string; }, 
-    measurements?: { [key: string]: number; }, 
-    tagOverrides?: { [key: string]: string; }, 
-    contextObjects?: { [name: string]: any; }): void 
-  {
-    _.forEach(this.appInsightsClients, (client) => {
-      client.trackException(exception, properties);
-    });
+    exception: Error,
+    properties?: { [key: string]: string; },
+    measurements?: { [key: string]: number; },
+    tagOverrides?: { [key: string]: string; },
+    contextObjects?: { [name: string]: any; }): void {
+    console.log("\nTRACK EXCEPTION -------\nCLIENT: ", this.instrumentationKey, "\nEVENT: ", exception, "\nEXCEPTION: ", exception, "\nPROPS: ", JSON.stringify(properties, null, 2), "\nTRACK EXCEPTION -------\n")
+    this.appInsightsClient.trackException(exception, properties, measurements, tagOverrides, contextObjects);
   }
 }

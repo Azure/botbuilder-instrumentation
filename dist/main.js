@@ -6,9 +6,14 @@ const builder = require("botbuilder");
 const request = require("request");
 const ApplicationInsights = require("applicationinsights");
 const events_1 = require("./events");
+exports.currentBotName = "currentBotName";
+function setCurrentBotName(session, botName) {
+    session.dialogData[exports.currentBotName] = botName;
+    return session;
+}
+exports.setCurrentBotName = setCurrentBotName;
 class BotFrameworkInstrumentation {
     constructor(settings) {
-        this.appInsightsClient = ApplicationInsights.client;
         this.console = {};
         this.methods = {
             "debug": 0,
@@ -17,22 +22,20 @@ class BotFrameworkInstrumentation {
             "warn": 3,
             "error": 4
         };
-        this.settings = {
-            sentiments: {
-                minWords: 3,
-                url: 'https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/sentiment',
-                id: 'bot-analytics',
-                key: null
-            }
+        this.sentiments = {
+            minWords: 3,
+            url: 'https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/sentiment',
+            id: 'bot-analytics',
+            key: null
         };
         settings = settings || {};
-        _.extend(this.settings.sentiments, settings.sentiments);
-        this.settings.sentiments.key = this.settings.sentiments.key || process.env.CG_SENTIMENT_KEY;
-        this.settings.instrumentationKey = settings.instrumentationKey || process.env.APPINSIGHTS_INSTRUMENTATIONKEY;
-        if (!this.settings.instrumentationKey) {
+        _.extend(this.sentiments, settings.sentiments);
+        this.sentiments.key = (this.sentiments) ? this.sentiments.key : process.env.CG_SENTIMENT_KEY;
+        this.instrumentationKey = settings.instrumentationKey || process.env.APPINSIGHTS_INSTRUMENTATIONKEY;
+        if (!this.instrumentationKey) {
             throw new Error('App Insights instrumentation key was not provided in options or the environment variable APPINSIGHTS_INSTRUMENTATIONKEY');
         }
-        if (!this.settings.sentiments.key) {
+        if (!this.sentiments.key) {
             console.warn('No sentiment key was provided - text sentiments will not be collected');
         }
     }
@@ -40,16 +43,14 @@ class BotFrameworkInstrumentation {
         return util.format.apply(util.format, Array.prototype.slice.call(args));
     }
     setupConsoleCollection() {
-        // Overriding console methods so that prints to console will first be logged
-        // to application insights
         _.keys(this.methods).forEach(method => {
             console[method] = (() => {
                 let original = console.log;
                 return (...args) => {
-                    let stdout = null;
+                    let stdout;
                     try {
                         let msg = this.formatArgs(args);
-                        this.appInsightsClient.trackTrace(msg, this.methods[method]);
+                        this.trackTrace(msg, this.methods[method]);
                         stdout = process.stdout;
                         process.stdout = process.stderr;
                         original.apply(console, args);
@@ -62,10 +63,9 @@ class BotFrameworkInstrumentation {
         });
     }
     collectSentiment(session, text) {
-        text = text || '';
-        if (!this.settings.sentiments.key)
+        if (!this.sentiments.key)
             return;
-        if (text.match(/\S+/g).length < this.settings.sentiments.minWords)
+        if (text.match(/\S+/g).length < this.sentiments.minWords)
             return;
         let message = session.message || {};
         let timestamp = message.timestamp;
@@ -73,28 +73,28 @@ class BotFrameworkInstrumentation {
         let conversation = address.conversation || {};
         let user = address.user || {};
         request({
-            url: this.settings.sentiments.url,
+            url: this.sentiments.url,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Ocp-Apim-Subscription-Key': this.settings.sentiments.key
+                'Ocp-Apim-Subscription-Key': this.sentiments.key
             },
             json: true,
             body: {
                 "documents": [
                     {
                         "language": "en",
-                        "id": this.settings.sentiments.id,
+                        "id": this.sentiments.id,
                         "text": text
                     }
                 ]
             }
         }, (error, response, body) => {
             if (error) {
-                return this.appInsightsClient.trackException(error);
+                return this.trackException(error);
             }
             try {
-                let result = _.find(body.documents, { id: this.settings.sentiments.id }) || {};
+                let result = _.find(body.documents, { id: this.sentiments.id }) || {};
                 var score = result.score || null;
                 if (isNaN(score)) {
                     throw new Error('Could not collect sentiment');
@@ -108,22 +108,24 @@ class BotFrameworkInstrumentation {
                     userId: user.id,
                     userName: user.name
                 };
-                this.appInsightsClient.trackEvent(events_1.default.Sentiment.name, item);
+                this.trackEvent(events_1.default.Sentiment.name, item);
             }
             catch (error) {
-                return this.appInsightsClient.trackException(error);
+                return this.trackException(error);
             }
         });
     }
-    monitor(bot) {
-        ApplicationInsights.setup(this.settings.instrumentationKey)
+    setupInstrumentation() {
+        ApplicationInsights.setup(this.instrumentationKey)
             .setAutoCollectConsole(true)
             .setAutoCollectExceptions(true)
             .setAutoCollectRequests(true)
+            .setAutoCollectPerformance(true)
             .start();
-        this.appInsightsClient = ApplicationInsights.getClient(this.settings.instrumentationKey);
-        //this.setupConsoleCollection();
-        // Adding middleware to intercept all user messages
+        this.appInsightsClient = ApplicationInsights.getClient(this.instrumentationKey);
+    }
+    monitor(bot, customFields) {
+        this.setupInstrumentation();
         if (bot) {
             bot.use({
                 botbuilder: (session, next) => {
@@ -132,6 +134,7 @@ class BotFrameworkInstrumentation {
                         let address = message.address || {};
                         let conversation = address.conversation || {};
                         let user = address.user || {};
+                        this.currentBot = session.dialogData[exports.currentBotName] || session.library.name;
                         let item = {
                             text: message.text,
                             type: message.type,
@@ -139,9 +142,17 @@ class BotFrameworkInstrumentation {
                             conversationId: conversation.id,
                             channel: address.channelId,
                             userId: user.id,
-                            userName: user.name
+                            userName: user.name,
+                            locale: session.preferredLocale(),
+                            botName: this.currentBot
                         };
-                        this.appInsightsClient.trackEvent(events_1.default.UserMessage.name, item);
+                        console.log("\nBOTNAME: ", item.botName, "\n");
+                        if (customFields) {
+                            for (var key in customFields) {
+                                item[key] = customFields[key];
+                            }
+                        }
+                        this.trackEvent(events_1.default.UserMessage.name, item);
                         self.collectSentiment(session, message.text);
                     }
                     catch (e) {
@@ -152,18 +163,17 @@ class BotFrameworkInstrumentation {
                 },
                 send: (message, next) => {
                     try {
-                        if (message.type == "message") {
-                            let address = message.address || {};
-                            let conversation = address.conversation || {};
-                            let user = address.user || {};
-                            let item = {
-                                text: message.text,
-                                type: message.type,
-                                timestamp: message.timestamp,
-                                conversationId: conversation.id
-                            };
-                            this.appInsightsClient.trackEvent(events_1.default.BotMessage.name, item);
-                        }
+                        let address = message.address || {};
+                        let conversation = address.conversation || {};
+                        let user = address.user || {};
+                        let item = {
+                            text: message.text,
+                            type: message.type,
+                            timestamp: message.timestamp,
+                            conversationId: conversation.id,
+                            botName: this.currentBot
+                        };
+                        this.trackEvent(events_1.default.BotMessage.name, item);
                     }
                     catch (e) {
                     }
@@ -173,65 +183,6 @@ class BotFrameworkInstrumentation {
                 }
             });
         }
-        // Monitoring new dialog calls like session.beginDialog
-        // When beginning a new dialog, the framework uses pushDialog to change context 
-        // to a new dialog
-        // Todo: Check alternative as <builder.SimpleDialog.prototype.begin>
-        // builder.Session.prototype..pushDialog = (function() {
-        //   var orig = builder.Session.prototype.pushDialog;
-        //   return function (args) {
-        //     var _session = this;
-        //     var _message = _session.message || {};
-        //     var _address = _message.address || {};
-        //     var _conversation = _address.conversation || {};
-        //     var _user = _address.user || {};
-        //     var _callstack = _session.sessionState.callstack;
-        //     var item = { 
-        //       intent: args && args.id,
-        //       state: args && args.state && JSON.stringify(args.state),
-        //       channel: _address.channelId,
-        //       conversationId: _conversation.id,
-        //       callstack_length: _callstack.length.toString(),
-        //       userId: _user.id,
-        //       userName: _user.name
-        //     };
-        //     _.take(_callstack, 3).forEach((stackItem: any, idx: number) => {
-        //       item[`callstack_${idx}_id`] = stackItem.id;
-        //       item[`callstack_${idx}_state`] = JSON.stringify(stackItem.state);
-        //     });
-        //     this.appInsightsClient.trackEvent(Events.Intents.name, item);
-        //     orig.apply(_session, [args]);
-        //   }
-        // })();
-        // Capture message session before send
-        // builder.Session.prototype.prepareMessage = (function() {
-        //   var orig = builder.Session.prototype.prepareMessage;
-        //   return function (msg) {
-        //     var _session = this;
-        //     var res = orig.apply(_session, [msg]);
-        //     if (_session.dialogData['transaction.started']) { 
-        //       var transactionEnded = false;
-        //       var success = false;
-        //       var conversation = _.find(transactions, { intent: _session.dialogData['transaction.id'] });
-        //       if (conversation.intent != _session.dialogData['BotBuilder.Data.Intent']) {
-        //         transactionEnded = true;
-        //       } else {
-        //         var test = conversation.test;
-        //         var success = typeof test == 'string' ? test == msg.text : test.test(msg.text);
-        //         if (success) {
-        //           transactionEnded = true;
-        //         }
-        //       }
-        //       if (transactionEnded) {
-        //         endConverting(_session, null, success);
-        //         delete _session.dialogData['transaction.started'];
-        //         delete _session.dialogData['transaction.id'];
-        //       }
-        //     }
-        //     return res;
-        //   }
-        // })();
-        // Collect intents collected from LUIS after entities were resolved
         let self = this;
         builder.IntentDialog.prototype.recognize = (() => {
             let _recognize = builder.IntentDialog.prototype.recognize;
@@ -254,17 +205,15 @@ class BotFrameworkInstrumentation {
                             userId: user.id,
                             userName: user.name
                         };
-                        self.appInsightsClient.trackEvent(events_1.default.Intent.name, item);
-                        // Tracking entities for the event
+                        self.trackEvent(events_1.default.Intent.name, item);
                         if (result && result.entities) {
                             result.entities.forEach(value => {
                                 let entityItem = _.clone(item);
                                 entityItem.entityType = value.type;
                                 entityItem.entityValue = value.entity;
-                                self.appInsightsClient.trackEvent(events_1.default.Entity.name, entityItem);
+                                self.trackEvent(events_1.default.Entity.name, entityItem);
                             });
                         }
-                        // Todo: on "set alarm" utterence, failiure
                         return cb(err, result);
                     }]);
             };
@@ -283,7 +232,7 @@ class BotFrameworkInstrumentation {
             userId: user.id,
             userName: user.name
         };
-        this.appInsightsClient.trackEvent(events_1.default.StartTransaction.name, item);
+        this.trackEvent(events_1.default.StartTransaction.name, item);
     }
     endTransaction(context, name = '', successful = true) {
         let message = context.message;
@@ -299,7 +248,26 @@ class BotFrameworkInstrumentation {
             userId: user.id,
             userName: user.name
         };
-        this.appInsightsClient.trackEvent(events_1.default.EndTransaction.name, item);
+        this.trackEvent(events_1.default.EndTransaction.name, item);
+    }
+    logCustomEvent(eventName, properties) {
+        this.trackEvent(eventName, properties);
+    }
+    logCustomError(error, properties) {
+        this.trackException(error, properties);
+    }
+    trackEvent(name, properties, measurements, tagOverrides, contextObjects) {
+        console.log("\nTRACK EVENT -------\nCLIENT: ", this.instrumentationKey, "\nEVENT: ", name, "\nPROPS: ", JSON.stringify(properties, null, 2), "\nTRACK EVENT -------\n");
+        this.appInsightsClient.trackEvent(name, properties, measurements, tagOverrides, contextObjects);
+    }
+    trackTrace(message, severityLevel, properties, tagOverrides, contextObjects) {
+        console.log("\nTRACK TRACE -------\nCLIENT: ", this.instrumentationKey, "\nEVENT: ", message, "\nSEC-LEVEL: ", severityLevel, "\nPROPS: ", JSON.stringify(properties, null, 2), "\nTRACK TRACE -------\n");
+        this.appInsightsClient.trackTrace(message, severityLevel, properties, tagOverrides, contextObjects);
+    }
+    trackException(exception, properties, measurements, tagOverrides, contextObjects) {
+        console.log("\nTRACK EXCEPTION -------\nCLIENT: ", this.instrumentationKey, "\nEVENT: ", exception, "\nEXCEPTION: ", exception, "\nPROPS: ", JSON.stringify(properties, null, 2), "\nTRACK EXCEPTION -------\n");
+        this.appInsightsClient.trackException(exception, properties, measurements, tagOverrides, contextObjects);
     }
 }
 exports.BotFrameworkInstrumentation = BotFrameworkInstrumentation;
+//# sourceMappingURL=/Users/claudius/Documents/workspace/Bots/botbuilder-instrumentation/dist/main.js.map
