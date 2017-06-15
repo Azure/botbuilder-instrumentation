@@ -215,6 +215,7 @@ export class BotFrameworkInstrumentation {
         },
         send: (message: any, next: (err?: Error) => void) => {
           try {
+<<<<<<< HEAD
             let address = message.address || {};
             let conversation = address.conversation || {};
             let user = address.user || {};
@@ -227,6 +228,24 @@ export class BotFrameworkInstrumentation {
               botName: this.currentBot
             };
             this.trackEvent(Events.BotMessage.name, item);
+=======
+            if(message.type == "message"){
+              let address = message.address || {};
+              let conversation = address.conversation || {};
+              let user = address.user || {};  
+
+              let item =  { 
+                text: message.text,
+                type: message.type,
+                timestamp: message.timestamp,
+                conversationId: conversation.id,
+                userId: user.id,
+                userName: user.name
+              };
+
+              this.trackEvent(Events.BotMessage.name, item);
+            }
+>>>>>>> itye-msft/master
           } catch (e) {
           }
           finally {
@@ -262,8 +281,11 @@ export class BotFrameworkInstrumentation {
             userId: user.id,
             userName: user.name
           };
-
-          self.trackEvent(Events.Intent.name, item);
+          
+          //there is no point sending 0 score intents to the telemetry.
+          if (item.score > 0) {
+            self.trackEvent(Events.Intent.name, item);
+          }
 
           // Tracking entities for the event
           if (result && result.entities) {
@@ -329,6 +351,58 @@ export class BotFrameworkInstrumentation {
   }
 
   /**
+   * Logs QNA maker service data
+   * @param context 
+   * @param userQuery 
+   * @param kbQuestion 
+   * @param kbAnswer 
+   * @param score 
+   */
+  trackQNAEvent(context:any, userQuery:string, kbQuestion:string, kbAnswer:string, score:any) {
+    let message = context.message;
+    let address = message.address || {};
+    let conversation = address.conversation || {};
+    let user = address.user || {};
+
+    let item = {
+      score: score,
+      timestamp: message.timestamp,
+      channel: address.channelId,
+      conversationId: conversation.id,
+      userId: user.id,
+      userName: user.name,
+      userQuery: userQuery,
+      kbQuestion: kbQuestion,
+      kbAnswer: kbAnswer
+    };
+
+    this.trackEvent(Events.QnaEvent.name, item);
+  }
+
+  /**
+   * Logs your own event with custom data
+   * @param context 
+   * @param eventName 
+   * @param keyValuePair an object with custom properties
+   */
+  trackCustomEvent(context, eventName: string, keyValuePair: any) {
+    let message = context.message;
+    let address = message.address || {};
+    let conversation = address.conversation || {};
+    let user = address.user || {};
+    let item = {
+      timestamp: message.timestamp,
+      channel: address.channelId,
+      conversationId: conversation.id,
+      userId: user.id,
+      userName: user.name
+    };
+    //merge the custom properties with the defaults
+    let eventData = Object.assign(item, keyValuePair);
+    this.trackEvent(eventName, eventData);
+  }
+
+  /**
    * Log a user action or other occurrence.
    * @param name              A string to identify this event in the portal.
    * @param properties        map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
@@ -337,6 +411,7 @@ export class BotFrameworkInstrumentation {
    * @param contextObjects    map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
    */
   private trackEvent(
+<<<<<<< HEAD
     name: string,
     properties?: { [key: string]: string; },
     measurements?: { [key: string]: number; },
@@ -344,6 +419,16 @@ export class BotFrameworkInstrumentation {
     contextObjects?: { [name: string]: any; }): void {
     console.log("\nTRACK EVENT -------\nCLIENT: ", this.instrumentationKey, "\nEVENT: ", name, "\nPROPS: ", JSON.stringify(properties, null, 2), "\nTRACK EVENT -------\n")
     this.appInsightsClient.trackEvent(name, properties, measurements, tagOverrides, contextObjects);
+=======
+    name: string, 
+    properties?: {[key: string]: string;}, 
+    measurements?: {[key: string]: number;}, 
+    tagOverrides?: {[key: string]: string;}, 
+    contextObjects?: {[name: string]: any;}): void   {
+    _.forEach(this.appInsightsClients, (client) => {
+      client.trackEvent(Events.EndTransaction.name, properties);
+    });
+>>>>>>> itye-msft/master
   }
 
   /**
@@ -354,6 +439,7 @@ export class BotFrameworkInstrumentation {
    * @param contextObjects map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
    */
   private trackTrace(
+<<<<<<< HEAD
     message: string,
     severityLevel?: any,
     properties?: { [key: string]: string; },
@@ -361,6 +447,16 @@ export class BotFrameworkInstrumentation {
     contextObjects?: { [name: string]: any; }): void {
     console.log("\nTRACK TRACE -------\nCLIENT: ", this.instrumentationKey, "\nEVENT: ", message, "\nSEC-LEVEL: ", severityLevel, "\nPROPS: ", JSON.stringify(properties, null, 2), "\nTRACK TRACE -------\n")
     this.appInsightsClient.trackTrace(message, severityLevel, properties, tagOverrides, contextObjects);
+=======
+    message: string, 
+    severityLevel?: any, 
+    properties?: { [key: string]: string; }, 
+    tagOverrides?: { [key: string]: string; }, 
+    contextObjects?: { [name: string]: any; }): void {
+    _.forEach(this.appInsightsClients, (client) => {
+      client.trackTrace(Events.EndTransaction.name, severityLevel, properties);
+    });
+>>>>>>> itye-msft/master
   }
 
   /**
@@ -372,6 +468,7 @@ export class BotFrameworkInstrumentation {
    * @param   contextObjects        map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
    */
   private trackException(
+<<<<<<< HEAD
     exception: Error,
     properties?: { [key: string]: string; },
     measurements?: { [key: string]: number; },
@@ -379,5 +476,15 @@ export class BotFrameworkInstrumentation {
     contextObjects?: { [name: string]: any; }): void {
     console.log("\nTRACK EXCEPTION -------\nCLIENT: ", this.instrumentationKey, "\nEVENT: ", exception, "\nEXCEPTION: ", exception, "\nPROPS: ", JSON.stringify(properties, null, 2), "\nTRACK EXCEPTION -------\n")
     this.appInsightsClient.trackException(exception, properties, measurements, tagOverrides, contextObjects);
+=======
+    exception: Error, 
+    properties?: { [key: string]: string; }, 
+    measurements?: { [key: string]: number; }, 
+    tagOverrides?: { [key: string]: string; }, 
+    contextObjects?: { [name: string]: any; }): void {
+    _.forEach(this.appInsightsClients, (client) => {
+      client.trackException(exception, properties);
+    });
+>>>>>>> itye-msft/master
   }
 }

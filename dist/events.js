@@ -84,6 +84,20 @@ exports.default = {
             userId: 'user.id',
             userName: 'user.name'
         }
+    },
+    QnaEvent: {
+        name: 'MBFEvent.QNAEvent',
+        format: {
+            score: 'qna score',
+            timestamp: 'message.timestamp',
+            channel: 'address.channelId',
+            conversationId: 'conversation.id',
+            userId: 'user.id',
+            userName: 'user.name',
+            userQuery: 'The original user query',
+            kbQuestion: 'The scored knowledge base question',
+            kbAnswer: 'The knowledge base answer'
+        }
     }
 };
 //# sourceMappingURL=/Users/lilian/GitHub/botbuilder-instrumentation/dist/events.js.map

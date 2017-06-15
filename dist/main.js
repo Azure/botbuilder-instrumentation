@@ -206,7 +206,9 @@ class BotFrameworkInstrumentation {
                             userId: user.id,
                             userName: user.name
                         };
-                        self.trackEvent(events_1.default.Intent.name, item);
+                        if (item.score > 0) {
+                            self.trackEvent(events_1.default.Intent.name, item);
+                        }
                         if (result && result.entities) {
                             result.entities.forEach(value => {
                                 let entityItem = _.clone(item);
@@ -256,6 +258,39 @@ class BotFrameworkInstrumentation {
     }
     logCustomError(error, properties) {
         this.trackException(error, properties);
+    }
+    trackQNAEvent(context, userQuery, kbQuestion, kbAnswer, score) {
+        let message = context.message;
+        let address = message.address || {};
+        let conversation = address.conversation || {};
+        let user = address.user || {};
+        let item = {
+            score: score,
+            timestamp: message.timestamp,
+            channel: address.channelId,
+            conversationId: conversation.id,
+            userId: user.id,
+            userName: user.name,
+            userQuery: userQuery,
+            kbQuestion: kbQuestion,
+            kbAnswer: kbAnswer
+        };
+        this.trackEvent(events_1.default.QnaEvent.name, item);
+    }
+    trackCustomEvent(context, eventName, keyValuePair) {
+        let message = context.message;
+        let address = message.address || {};
+        let conversation = address.conversation || {};
+        let user = address.user || {};
+        let item = {
+            timestamp: message.timestamp,
+            channel: address.channelId,
+            conversationId: conversation.id,
+            userId: user.id,
+            userName: user.name
+        };
+        let eventData = Object.assign(item, keyValuePair);
+        this.trackEvent(eventName, eventData);
     }
     trackEvent(name, properties, measurements, tagOverrides, contextObjects) {
         console.log("\nTRACK EVENT -------\nCLIENT: ", this.instrumentationKey, "\nEVENT: ", name, "\nPROPS: ", JSON.stringify(properties, null, 2), "\nTRACK EVENT -------\n");
