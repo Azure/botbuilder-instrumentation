@@ -25,7 +25,7 @@ CG_SENTIMENT_KEY={Cognitive Services Text Analytics Key}
 var instrumentation = require('botbuilder-instrumentation');
 
 // Setting up advanced instrumentation
-let logging = new instrumentation.BotFrameworkInstrumentation({ 
+let logging = new instrumentation.BotFrameworkInstrumentation({
   instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATIONKEY,
   sentimentKey: process.env.CG_SENTIMENT_KEY,
 });
@@ -38,7 +38,7 @@ logging.monitor(bot);
 var instrumentation = require('botbuilder-instrumentation');
 
 // Setting up advanced instrumentation
-let logging = new instrumentation.BotFrameworkInstrumentation({ 
+let logging = new instrumentation.BotFrameworkInstrumentation({
   instrumentationKey: ["main insturmnation key","secondary instumentation key"],
   sentimentKey: process.env.CG_SENTIMENT_KEY,
 });
@@ -51,7 +51,7 @@ logging.monitor(bot);
 var instrumentation = require('botbuilder-instrumentation');
 
 // Setting up advanced instrumentation
-let logging = new instrumentation.BotFrameworkInstrumentation({ 
+let logging = new instrumentation.BotFrameworkInstrumentation({
   instrumentationKey: ["main insturmnation key","secondary instumentation key"],
   sentimentKey: process.env.CG_SENTIMENT_KEY,
 });
@@ -68,7 +68,7 @@ loggins.trackQNAEvent(context, userQuery, kbQuestion, kbAnswer, score);
 var instrumentation = require('botbuilder-instrumentation');
 
 // Setting up advanced instrumentation
-let logging = new instrumentation.BotFrameworkInstrumentation({ 
+let logging = new instrumentation.BotFrameworkInstrumentation({
   instrumentationKey: ["main insturmnation key","secondary instumentation key"],
   sentimentKey: process.env.CG_SENTIMENT_KEY,
 });

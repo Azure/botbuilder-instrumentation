@@ -17,17 +17,22 @@ export interface IInstrumentationSettings {
   sentiments?: ISentimentSettings;
 }
 
-export const currentBotName = "currentBotName";
+export const CURRENT_BOT_NAME = "currentBotName";
 
-export function setCurrentBotName(session: any, botName: string): any {
-  session.dialogData[currentBotName] = botName;
+/**
+ * Sets the name for the Bot of the current Dialog
+ * @param session
+ * @param botName
+ */
+export function loggerSetCurrentBotName(session: any, botName: string): any {
+  session.dialogData[CURRENT_BOT_NAME] = botName;
   return session;
 }
 
 export class BotFrameworkInstrumentation {
 
   private appInsightsClient: typeof ApplicationInsights.client;
-  private currentBot: string;
+  private currentBotName: string = "*";
 
   private console = {};
   private methods = {
@@ -170,43 +175,46 @@ export class BotFrameworkInstrumentation {
     this.appInsightsClient = ApplicationInsights.getClient(this.instrumentationKey);
   }
 
+  private updateProps(props: any, item: any = this.customFields): { [key: string]: string; } {
+    _.extend(props, item);
+    return props;
+  }
+
+  private prepProps(session: builder.Session): { [key: string]: string; } {
+    let message: any = session.message;
+    let address = message.address || {};
+    let conversation = address.conversation || {};
+    let user = address.user || {};
+    this.currentBotName = (session.dialogData) ? session.dialogData[CURRENT_BOT_NAME] : (session.library) ? session.library.name : "*";
+    let item = {
+      text: message.text,
+      type: message.type,
+      timestamp: message.timestamp,
+      conversationId: conversation.id,
+      channel: address.channelId,
+      userId: user.id,
+      userName: user.name,
+      locale: session.preferredLocale(),
+      botName: this.currentBotName
+    };
+
+    console.log("\nBOTNAME: ", item.botName, "\n")
+    return this.updateProps(item)
+  }
+
   monitor(bot: builder.UniversalBot) {
 
     this.setupInstrumentation();
 
     // Adding middleware to intercept all user messages
     if (bot) {
+      this.currentBotName = bot.name;
       bot.use({
         botbuilder: (session, next) => {
           try {
-            let message: any = session.message;
-            let address = message.address || {};
-            let conversation = address.conversation || {};
-            let user = address.user || {};
-            this.currentBot = session.dialogData[currentBotName] || session.library.name;
-            let item = {
-              text: message.text,
-              type: message.type,
-              timestamp: message.timestamp,
-              conversationId: conversation.id,
-              channel: address.channelId,
-              userId: user.id,
-              userName: user.name,
-              locale: session.preferredLocale(),
-              botName: this.currentBot
-            };
-
-            console.log("\nBOTNAME: ", item.botName, "\n")
-
-            if (this.customFields) {
-              for (var key in this.customFields) {
-                item[key] = this.customFields[key];
-              }
-            }
-
-
+            let item = this.prepProps(session)
             this.trackEvent(Events.UserMessage.name, item);
-            self.collectSentiment(session, message.text);
+            self.collectSentiment(session, session.message.text);
           } catch (e) {
           }
           finally {
@@ -215,37 +223,19 @@ export class BotFrameworkInstrumentation {
         },
         send: (message: any, next: (err?: Error) => void) => {
           try {
-<<<<<<< HEAD
             let address = message.address || {};
             let conversation = address.conversation || {};
             let user = address.user || {};
-
             let item = {
               text: message.text,
               type: message.type,
               timestamp: message.timestamp,
               conversationId: conversation.id,
-              botName: this.currentBot
+              botName: this.currentBotName
             };
+
+            this.updateProps(item)
             this.trackEvent(Events.BotMessage.name, item);
-=======
-            if(message.type == "message"){
-              let address = message.address || {};
-              let conversation = address.conversation || {};
-              let user = address.user || {};  
-
-              let item =  { 
-                text: message.text,
-                type: message.type,
-                timestamp: message.timestamp,
-                conversationId: conversation.id,
-                userId: user.id,
-                userName: user.name
-              };
-
-              this.trackEvent(Events.BotMessage.name, item);
-            }
->>>>>>> itye-msft/master
           } catch (e) {
           }
           finally {
@@ -281,7 +271,7 @@ export class BotFrameworkInstrumentation {
             userId: user.id,
             userName: user.name
           };
-          
+
           //there is no point sending 0 score intents to the telemetry.
           if (item.score > 0) {
             self.trackEvent(Events.Intent.name, item);
@@ -302,6 +292,14 @@ export class BotFrameworkInstrumentation {
         }]);
       };
     })();
+  }
+
+  /**
+   * Allows you to set custom fields that will be logged with every log statement
+   * @param fields      Reference to Object that contains fields that need to be logged
+   */
+  setCustomFields(fields: Object) {
+    this.customFields = fields
   }
 
   startTransaction(context: any, name = '') {
@@ -341,24 +339,41 @@ export class BotFrameworkInstrumentation {
 
     this.trackEvent(Events.EndTransaction.name, item);
   }
-
-  public logCustomEvent(eventName: string, properties?: { [key: string]: string }) {
-    this.trackEvent(eventName, properties);
+  /**
+   * Log custom Events
+   * @param eventName         Name of the Log event
+   * @param session           BotFramework Session object
+   * @param properties        Custom Properties that need to be logged
+   */
+  public logCustomEvent(eventName: string, session: builder.Session, properties?: { [key: string]: string }) {
+    let props = this.prepProps(session)
+    props = this.updateProps(props, properties);
+    this.trackEvent(Events.CustomEvent.name, props);
   }
 
-  public logCustomError(error: Error, properties?: { [key: string]: string }) {
-    this.trackException(error, properties);
+  /**
+   * Log custom Errors
+   * @param error       Error needing logged
+   * @param session     BotFramework Session object
+   * @param properties  Custom Properties that need to be logged
+   */
+  public logCustomError(error: Error, session: builder.Session, properties?: {
+    [key: string]: string
+  }) {
+    let props = this.prepProps(session)
+    props = this.updateProps(props, properties);
+    this.trackException(error, props);
   }
 
   /**
    * Logs QNA maker service data
-   * @param context 
-   * @param userQuery 
-   * @param kbQuestion 
-   * @param kbAnswer 
-   * @param score 
+   * @param context
+   * @param userQuery
+   * @param kbQuestion
+   * @param kbAnswer
+   * @param score
    */
-  trackQNAEvent(context:any, userQuery:string, kbQuestion:string, kbAnswer:string, score:any) {
+  logQNAEvent(context: any, userQuery: string, kbQuestion: string, kbAnswer: string, score: any) {
     let message = context.message;
     let address = message.address || {};
     let conversation = address.conversation || {};
@@ -380,29 +395,6 @@ export class BotFrameworkInstrumentation {
   }
 
   /**
-   * Logs your own event with custom data
-   * @param context 
-   * @param eventName 
-   * @param keyValuePair an object with custom properties
-   */
-  trackCustomEvent(context, eventName: string, keyValuePair: any) {
-    let message = context.message;
-    let address = message.address || {};
-    let conversation = address.conversation || {};
-    let user = address.user || {};
-    let item = {
-      timestamp: message.timestamp,
-      channel: address.channelId,
-      conversationId: conversation.id,
-      userId: user.id,
-      userName: user.name
-    };
-    //merge the custom properties with the defaults
-    let eventData = Object.assign(item, keyValuePair);
-    this.trackEvent(eventName, eventData);
-  }
-
-  /**
    * Log a user action or other occurrence.
    * @param name              A string to identify this event in the portal.
    * @param properties        map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
@@ -411,7 +403,6 @@ export class BotFrameworkInstrumentation {
    * @param contextObjects    map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
    */
   private trackEvent(
-<<<<<<< HEAD
     name: string,
     properties?: { [key: string]: string; },
     measurements?: { [key: string]: number; },
@@ -419,16 +410,6 @@ export class BotFrameworkInstrumentation {
     contextObjects?: { [name: string]: any; }): void {
     console.log("\nTRACK EVENT -------\nCLIENT: ", this.instrumentationKey, "\nEVENT: ", name, "\nPROPS: ", JSON.stringify(properties, null, 2), "\nTRACK EVENT -------\n")
     this.appInsightsClient.trackEvent(name, properties, measurements, tagOverrides, contextObjects);
-=======
-    name: string, 
-    properties?: {[key: string]: string;}, 
-    measurements?: {[key: string]: number;}, 
-    tagOverrides?: {[key: string]: string;}, 
-    contextObjects?: {[name: string]: any;}): void   {
-    _.forEach(this.appInsightsClients, (client) => {
-      client.trackEvent(Events.EndTransaction.name, properties);
-    });
->>>>>>> itye-msft/master
   }
 
   /**
@@ -439,7 +420,6 @@ export class BotFrameworkInstrumentation {
    * @param contextObjects map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
    */
   private trackTrace(
-<<<<<<< HEAD
     message: string,
     severityLevel?: any,
     properties?: { [key: string]: string; },
@@ -447,16 +427,6 @@ export class BotFrameworkInstrumentation {
     contextObjects?: { [name: string]: any; }): void {
     console.log("\nTRACK TRACE -------\nCLIENT: ", this.instrumentationKey, "\nEVENT: ", message, "\nSEC-LEVEL: ", severityLevel, "\nPROPS: ", JSON.stringify(properties, null, 2), "\nTRACK TRACE -------\n")
     this.appInsightsClient.trackTrace(message, severityLevel, properties, tagOverrides, contextObjects);
-=======
-    message: string, 
-    severityLevel?: any, 
-    properties?: { [key: string]: string; }, 
-    tagOverrides?: { [key: string]: string; }, 
-    contextObjects?: { [name: string]: any; }): void {
-    _.forEach(this.appInsightsClients, (client) => {
-      client.trackTrace(Events.EndTransaction.name, severityLevel, properties);
-    });
->>>>>>> itye-msft/master
   }
 
   /**
@@ -468,7 +438,6 @@ export class BotFrameworkInstrumentation {
    * @param   contextObjects        map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
    */
   private trackException(
-<<<<<<< HEAD
     exception: Error,
     properties?: { [key: string]: string; },
     measurements?: { [key: string]: number; },
@@ -476,15 +445,5 @@ export class BotFrameworkInstrumentation {
     contextObjects?: { [name: string]: any; }): void {
     console.log("\nTRACK EXCEPTION -------\nCLIENT: ", this.instrumentationKey, "\nEVENT: ", exception, "\nEXCEPTION: ", exception, "\nPROPS: ", JSON.stringify(properties, null, 2), "\nTRACK EXCEPTION -------\n")
     this.appInsightsClient.trackException(exception, properties, measurements, tagOverrides, contextObjects);
-=======
-    exception: Error, 
-    properties?: { [key: string]: string; }, 
-    measurements?: { [key: string]: number; }, 
-    tagOverrides?: { [key: string]: string; }, 
-    contextObjects?: { [name: string]: any; }): void {
-    _.forEach(this.appInsightsClients, (client) => {
-      client.trackException(exception, properties);
-    });
->>>>>>> itye-msft/master
   }
 }

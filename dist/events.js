@@ -1,6 +1,18 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = {
+    CustomEvent: {
+        name: 'MBFEvent.CustomEvent',
+        format: {
+            text: 'message.text',
+            type: 'message.type',
+            timestamp: 'message.timestamp',
+            conversationId: 'message.address.conversation.id',
+            channel: 'address.channelId',
+            userId: 'user.id',
+            userName: 'user.name'
+        }
+    },
     UserMessage: {
         name: 'MBFEvent.UserMessage',
         format: {
@@ -100,4 +112,4 @@ exports.default = {
         }
     }
 };
-//# sourceMappingURL=/Users/lilian/GitHub/botbuilder-instrumentation/dist/events.js.map
+//# sourceMappingURL=/Users/claudius/Documents/workspace/Bots/botbuilder-instrumentation/dist/events.js.map

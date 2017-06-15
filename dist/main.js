@@ -6,14 +6,15 @@ const builder = require("botbuilder");
 const request = require("request");
 const ApplicationInsights = require("applicationinsights");
 const events_1 = require("./events");
-exports.currentBotName = "currentBotName";
-function setCurrentBotName(session, botName) {
-    session.dialogData[exports.currentBotName] = botName;
+exports.CURRENT_BOT_NAME = "currentBotName";
+function loggerSetCurrentBotName(session, botName) {
+    session.dialogData[exports.CURRENT_BOT_NAME] = botName;
     return session;
 }
-exports.setCurrentBotName = setCurrentBotName;
+exports.loggerSetCurrentBotName = loggerSetCurrentBotName;
 class BotFrameworkInstrumentation {
     constructor(settings) {
+        this.currentBotName = "*";
         this.console = {};
         this.methods = {
             "debug": 0,
@@ -125,36 +126,40 @@ class BotFrameworkInstrumentation {
             .start();
         this.appInsightsClient = ApplicationInsights.getClient(this.instrumentationKey);
     }
+    updateProps(props, item = this.customFields) {
+        _.extend(props, item);
+        return props;
+    }
+    prepProps(session) {
+        let message = session.message;
+        let address = message.address || {};
+        let conversation = address.conversation || {};
+        let user = address.user || {};
+        this.currentBotName = (session.dialogData) ? session.dialogData[exports.CURRENT_BOT_NAME] : (session.library) ? session.library.name : "*";
+        let item = {
+            text: message.text,
+            type: message.type,
+            timestamp: message.timestamp,
+            conversationId: conversation.id,
+            channel: address.channelId,
+            userId: user.id,
+            userName: user.name,
+            locale: session.preferredLocale(),
+            botName: this.currentBotName
+        };
+        console.log("\nBOTNAME: ", item.botName, "\n");
+        return this.updateProps(item);
+    }
     monitor(bot) {
         this.setupInstrumentation();
         if (bot) {
+            this.currentBotName = bot.name;
             bot.use({
                 botbuilder: (session, next) => {
                     try {
-                        let message = session.message;
-                        let address = message.address || {};
-                        let conversation = address.conversation || {};
-                        let user = address.user || {};
-                        this.currentBot = session.dialogData[exports.currentBotName] || session.library.name;
-                        let item = {
-                            text: message.text,
-                            type: message.type,
-                            timestamp: message.timestamp,
-                            conversationId: conversation.id,
-                            channel: address.channelId,
-                            userId: user.id,
-                            userName: user.name,
-                            locale: session.preferredLocale(),
-                            botName: this.currentBot
-                        };
-                        console.log("\nBOTNAME: ", item.botName, "\n");
-                        if (this.customFields) {
-                            for (var key in this.customFields) {
-                                item[key] = this.customFields[key];
-                            }
-                        }
+                        let item = this.prepProps(session);
                         this.trackEvent(events_1.default.UserMessage.name, item);
-                        self.collectSentiment(session, message.text);
+                        self.collectSentiment(session, session.message.text);
                     }
                     catch (e) {
                     }
@@ -172,8 +177,9 @@ class BotFrameworkInstrumentation {
                             type: message.type,
                             timestamp: message.timestamp,
                             conversationId: conversation.id,
-                            botName: this.currentBot
+                            botName: this.currentBotName
                         };
+                        this.updateProps(item);
                         this.trackEvent(events_1.default.BotMessage.name, item);
                     }
                     catch (e) {
@@ -222,6 +228,9 @@ class BotFrameworkInstrumentation {
             };
         })();
     }
+    setCustomFields(fields) {
+        this.customFields = fields;
+    }
     startTransaction(context, name = '') {
         let message = context.message;
         let address = message.address || {};
@@ -253,13 +262,17 @@ class BotFrameworkInstrumentation {
         };
         this.trackEvent(events_1.default.EndTransaction.name, item);
     }
-    logCustomEvent(eventName, properties) {
-        this.trackEvent(eventName, properties);
+    logCustomEvent(eventName, session, properties) {
+        let props = this.prepProps(session);
+        props = this.updateProps(props, properties);
+        this.trackEvent(events_1.default.CustomEvent.name, props);
     }
-    logCustomError(error, properties) {
-        this.trackException(error, properties);
+    logCustomError(error, session, properties) {
+        let props = this.prepProps(session);
+        props = this.updateProps(props, properties);
+        this.trackException(error, props);
     }
-    trackQNAEvent(context, userQuery, kbQuestion, kbAnswer, score) {
+    logQNAEvent(context, userQuery, kbQuestion, kbAnswer, score) {
         let message = context.message;
         let address = message.address || {};
         let conversation = address.conversation || {};
@@ -277,21 +290,6 @@ class BotFrameworkInstrumentation {
         };
         this.trackEvent(events_1.default.QnaEvent.name, item);
     }
-    trackCustomEvent(context, eventName, keyValuePair) {
-        let message = context.message;
-        let address = message.address || {};
-        let conversation = address.conversation || {};
-        let user = address.user || {};
-        let item = {
-            timestamp: message.timestamp,
-            channel: address.channelId,
-            conversationId: conversation.id,
-            userId: user.id,
-            userName: user.name
-        };
-        let eventData = Object.assign(item, keyValuePair);
-        this.trackEvent(eventName, eventData);
-    }
     trackEvent(name, properties, measurements, tagOverrides, contextObjects) {
         console.log("\nTRACK EVENT -------\nCLIENT: ", this.instrumentationKey, "\nEVENT: ", name, "\nPROPS: ", JSON.stringify(properties, null, 2), "\nTRACK EVENT -------\n");
         this.appInsightsClient.trackEvent(name, properties, measurements, tagOverrides, contextObjects);
@@ -306,4 +304,4 @@ class BotFrameworkInstrumentation {
     }
 }
 exports.BotFrameworkInstrumentation = BotFrameworkInstrumentation;
-//# sourceMappingURL=/Users/lilian/GitHub/botbuilder-instrumentation/dist/main.js.map
+//# sourceMappingURL=/Users/claudius/Documents/workspace/Bots/botbuilder-instrumentation/dist/main.js.map
