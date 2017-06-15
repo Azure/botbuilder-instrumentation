@@ -38,6 +38,7 @@ export class BotFrameworkInstrumentation {
     "error": 4
   };
 
+  private customFields: Object = {};
   private instrumentationKey: string;
   private sentiments: ISentimentSettings = {
     minWords: 3,
@@ -169,7 +170,7 @@ export class BotFrameworkInstrumentation {
     this.appInsightsClient = ApplicationInsights.getClient(this.instrumentationKey);
   }
 
-  monitor(bot: builder.UniversalBot, customFields?: Object) {
+  monitor(bot: builder.UniversalBot) {
 
     this.setupInstrumentation();
 
@@ -197,9 +198,9 @@ export class BotFrameworkInstrumentation {
 
             console.log("\nBOTNAME: ", item.botName, "\n")
 
-            if (customFields) {
-              for (var key in customFields) {
-                item[key] = customFields[key];
+            if (this.customFields) {
+              for (var key in this.customFields) {
+                item[key] = this.customFields[key];
               }
             }
 

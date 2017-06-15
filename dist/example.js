@@ -6,4 +6,4 @@ monitor.monitor(bot, { transactions: [
             test: /^(Creating alarm named)/i
         }
     ] });
-//# sourceMappingURL=/Users/claudius/Documents/workspace/Bots/botbuilder-instrumentation/dist/example.js.map
+//# sourceMappingURL=/Users/lilian/GitHub/botbuilder-instrumentation/dist/example.js.map

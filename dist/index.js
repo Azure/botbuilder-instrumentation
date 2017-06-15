@@ -377,4 +377,4 @@ module.exports = {
     monitor,
     measure
 };
-//# sourceMappingURL=/Users/claudius/Documents/workspace/Bots/botbuilder-instrumentation/dist/index.js.map
+//# sourceMappingURL=/Users/lilian/GitHub/botbuilder-instrumentation/dist/index.js.map

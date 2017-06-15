@@ -22,6 +22,7 @@ class BotFrameworkInstrumentation {
             "warn": 3,
             "error": 4
         };
+        this.customFields = {};
         this.sentiments = {
             minWords: 3,
             url: 'https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/sentiment',
@@ -124,7 +125,7 @@ class BotFrameworkInstrumentation {
             .start();
         this.appInsightsClient = ApplicationInsights.getClient(this.instrumentationKey);
     }
-    monitor(bot, customFields) {
+    monitor(bot) {
         this.setupInstrumentation();
         if (bot) {
             bot.use({
@@ -147,9 +148,9 @@ class BotFrameworkInstrumentation {
                             botName: this.currentBot
                         };
                         console.log("\nBOTNAME: ", item.botName, "\n");
-                        if (customFields) {
-                            for (var key in customFields) {
-                                item[key] = customFields[key];
+                        if (this.customFields) {
+                            for (var key in this.customFields) {
+                                item[key] = this.customFields[key];
                             }
                         }
                         this.trackEvent(events_1.default.UserMessage.name, item);
@@ -270,4 +271,4 @@ class BotFrameworkInstrumentation {
     }
 }
 exports.BotFrameworkInstrumentation = BotFrameworkInstrumentation;
-//# sourceMappingURL=/Users/claudius/Documents/workspace/Bots/botbuilder-instrumentation/dist/main.js.map
+//# sourceMappingURL=/Users/lilian/GitHub/botbuilder-instrumentation/dist/main.js.map
