@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "module": "commonjs",
-    "target": "es6",
-    "allowJs": true,
+    "target": "es2016",
+    // "allowJs": true,
     "outDir": "dist/",
     "rootDir": "src/",
     "moduleResolution": "node",
@@ -12,7 +12,8 @@
     "noImplicitThis": false,
     "noImplicitAny": false,
     "sourceMap": true,
-    "mapRoot": "dist/"
+    "mapRoot": "dist/",
+    "declaration": true
   },
   "exclude": [
     "node_modules",

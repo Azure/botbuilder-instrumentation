@@ -9,12 +9,13 @@ const events_1 = require("./events");
 exports.CURRENT_BOT_NAME = "currentBotName";
 const DefaultBotName = "*";
 function setCurrentBotName(session, botName) {
-    session.dialogData[exports.CURRENT_BOT_NAME] = botName;
+    session.privateConversationData[exports.CURRENT_BOT_NAME] = botName;
     return session;
 }
 exports.setCurrentBotName = setCurrentBotName;
 class BotFrameworkInstrumentation {
     constructor(settings) {
+        this.settings = settings;
         this.currentBotName = DefaultBotName;
         this.console = {};
         this.methods = {
@@ -24,16 +25,20 @@ class BotFrameworkInstrumentation {
             "warn": 3,
             "error": 4
         };
-        this.customFields = {};
+        this.customFields = {
+            containerKeys: {},
+            containers: {},
+            objects: {}
+        };
         this.sentiments = {
             minWords: 3,
             url: 'https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/sentiment',
             id: 'bot-analytics',
             key: null
         };
-        settings = settings || {};
+        settings = settings || null;
         _.extend(this.sentiments, settings.sentiments);
-        this.sentiments.key = (this.sentiments) ? this.sentiments.key : process.env.CG_SENTIMENT_KEY;
+        this.sentiments.key = (this.sentiments.hasOwnProperty('key')) ? this.sentiments.key : process.env.CG_SENTIMENT_KEY;
         this.instrumentationKey = settings.instrumentationKey || process.env.APPINSIGHTS_INSTRUMENTATIONKEY;
         if (!this.instrumentationKey) {
             throw new Error('App Insights instrumentation key was not provided in options or the environment variable APPINSIGHTS_INSTRUMENTATIONKEY');
@@ -70,11 +75,11 @@ class BotFrameworkInstrumentation {
             return;
         if (text.match(/\S+/g).length < this.sentiments.minWords)
             return;
-        let message = session.message || {};
+        let message = session.message;
         let timestamp = message.timestamp;
-        let address = message.address || {};
-        let conversation = address.conversation || {};
-        let user = address.user || {};
+        let address = message.address || null;
+        let conversation = address.conversation || null;
+        let user = address.user || null;
         request({
             url: this.sentiments.url,
             method: 'POST',
@@ -118,34 +123,37 @@ class BotFrameworkInstrumentation {
             }
         });
     }
-    setupInstrumentation() {
-        ApplicationInsights.setup(this.instrumentationKey)
-            .setAutoCollectConsole(true)
-            .setAutoCollectExceptions(true)
-            .setAutoCollectRequests(true)
-            .setAutoCollectPerformance(true)
-            .start();
-        this.appInsightsClient = ApplicationInsights.getClient(this.instrumentationKey);
-    }
-    updateProps(props, item = this.customFields) {
-        _.extend(props, item);
+    updateProps(props, customFields) {
+        if (!customFields) {
+            customFields = {};
+            for (var key in this.customFields.objects) {
+                _.extend(customFields, this.customFields.objects[key]);
+            }
+            for (var key in this.customFields.containerKeys) {
+                if (this.customFields.containerKeys.hasOwnProperty(key)) {
+                    let container = this.customFields.containers[key];
+                    let values = this.customFields.containerKeys[key];
+                    for (let key of values) {
+                        customFields[key] = (container.hasOwnProperty(key)) ? container[key] : `VALUE-FOR-KEY:'${key}'-NOT-FOUND`;
+                    }
+                }
+            }
+        }
+        _.extend(props, customFields);
         return props;
     }
     getBotName(session) {
-        let name;
-        if (session.dialogData) {
-            name = (session.dialogData[exports.CURRENT_BOT_NAME]) ? session.dialogData[exports.CURRENT_BOT_NAME] : DefaultBotName;
-        }
-        if (name == DefaultBotName && session.library) {
-            name = (session.library.name) ? session.library.name : DefaultBotName;
+        let name = (session.privateConversationData.hasOwnProperty(exports.CURRENT_BOT_NAME)) ? session.privateConversationData[exports.CURRENT_BOT_NAME] : DefaultBotName;
+        if (name === DefaultBotName && session.library) {
+            name = (session.library.hasOwnProperty("name")) ? session.library.name : DefaultBotName;
         }
         return name;
     }
     prepProps(session) {
         let message = session.message;
-        let address = message.address || {};
-        let conversation = address.conversation || {};
-        let user = address.user || {};
+        let address = message.address || null;
+        let conversation = address.conversation || null;
+        let user = address.user || null;
         this.currentBotName = this.getBotName(session);
         let item = {
             text: message.text,
@@ -161,8 +169,17 @@ class BotFrameworkInstrumentation {
         console.log("\nBOTNAME: ", item.botName, "\n");
         return this.updateProps(item);
     }
+    setupInstrumentation(autoCollectConsole = false, autoCollectExceptions = false, autoCollectRequests = false, autoCollectPerf = false) {
+        ApplicationInsights.setup(this.instrumentationKey)
+            .setAutoCollectConsole(autoCollectConsole)
+            .setAutoCollectExceptions(autoCollectExceptions)
+            .setAutoCollectRequests(autoCollectRequests)
+            .setAutoCollectPerformance(autoCollectPerf)
+            .start();
+        this.appInsightsClient = ApplicationInsights.getClient(this.instrumentationKey);
+    }
     monitor(bot) {
-        this.setupInstrumentation();
+        this.setupInstrumentation(this.settings.autoLogOptions.autoCollectConsole, this.settings.autoLogOptions.autoCollectExceptions, this.settings.autoLogOptions.autoCollectRequests, this.settings.autoLogOptions.autoCollectPerf);
         if (bot) {
             this.currentBotName = bot.name;
             bot.use({
@@ -180,9 +197,9 @@ class BotFrameworkInstrumentation {
                 },
                 send: (message, next) => {
                     try {
-                        let address = message.address || {};
-                        let conversation = address.conversation || {};
-                        let user = address.user || {};
+                        let address = message.address || null;
+                        let conversation = address.conversation || null;
+                        let user = address.user || null;
                         let item = {
                             text: message.text,
                             type: message.type,
@@ -204,13 +221,13 @@ class BotFrameworkInstrumentation {
         let self = this;
         builder.IntentDialog.prototype.recognize = (() => {
             let _recognize = builder.IntentDialog.prototype.recognize;
-            return function (context, cb) {
+            return function (session, cb) {
                 let _dialog = this;
-                _recognize.apply(_dialog, [context, (err, result) => {
-                        let message = context.message;
-                        let address = message.address || {};
-                        let conversation = address.conversation || {};
-                        let user = address.user || {};
+                _recognize.apply(_dialog, [session, (err, result) => {
+                        let message = session.message;
+                        let address = message.address || null;
+                        let conversation = address.conversation || null;
+                        let user = address.user || null;
                         let item = {
                             text: message.text,
                             timestamp: message.timestamp,
@@ -239,14 +256,33 @@ class BotFrameworkInstrumentation {
             };
         })();
     }
-    setCustomFields(fields) {
-        this.customFields = fields;
+    setCustomFields(objectContainer, keys) {
+        if (keys) {
+            let index = Object.values(this.customFields.containers).indexOf(objectContainer);
+            let keyValues = Array.isArray(keys) ? keys : [keys];
+            if (index == -1) {
+                let idx = (Object.keys(this.customFields.containers).length - 1) <= -1 ? 0 : Object.keys(this.customFields.containers).length - 1;
+                this.customFields.containers[idx] = objectContainer;
+                this.customFields.containerKeys[idx] = keyValues;
+            }
+            else {
+                for (let key of keyValues) {
+                    if (!this.customFields.containerKeys[index].includes(key)) {
+                        this.customFields.containerKeys[index].push(key);
+                    }
+                }
+            }
+        }
+        else {
+            let idx = (Object.keys(this.customFields.objects).length - 1) <= -1 ? 0 : Object.keys(this.customFields.objects).length - 1;
+            this.customFields.objects[idx] = objectContainer;
+        }
     }
-    startTransaction(context, name = '') {
-        let message = context.message;
-        let address = message.address || {};
-        let conversation = address.conversation || {};
-        let user = address.user || {};
+    startTransaction(session, name = '') {
+        let message = session.message;
+        let address = message.address || null;
+        let conversation = address.conversation || null;
+        let user = address.user || null;
         let item = {
             name: name,
             timestamp: message.timestamp,
@@ -257,11 +293,11 @@ class BotFrameworkInstrumentation {
         };
         this.trackEvent(events_1.default.StartTransaction.name, item);
     }
-    endTransaction(context, name = '', successful = true) {
-        let message = context.message;
-        let address = message.address || {};
-        let conversation = address.conversation || {};
-        let user = address.user || {};
+    endTransaction(session, name = '', successful = true) {
+        let message = session.message;
+        let address = message.address || null;
+        let conversation = address.conversation || null;
+        let user = address.user || null;
         let item = {
             name: name,
             successful: successful.toString(),
@@ -273,21 +309,23 @@ class BotFrameworkInstrumentation {
         };
         this.trackEvent(events_1.default.EndTransaction.name, item);
     }
-    logCustomEvent(eventName, session, properties) {
+    prepareLogData(session, item) {
         let props = this.prepProps(session);
-        props = this.updateProps(props, properties);
-        this.trackEvent(events_1.default.CustomEvent.name, props);
+        props = this.updateProps(props, item);
+        return props;
+    }
+    logCustomEvent(eventName, session, properties) {
+        properties["eventName"] = eventName;
+        this.trackEvent(events_1.default.CustomEvent.name, this.prepareLogData(session, properties));
     }
     logCustomError(error, session, properties) {
-        let props = this.prepProps(session);
-        props = this.updateProps(props, properties);
-        this.trackException(error, props);
+        this.trackException(error, this.prepareLogData(session, properties));
     }
-    logQNAEvent(context, userQuery, kbQuestion, kbAnswer, score) {
-        let message = context.message;
-        let address = message.address || {};
-        let conversation = address.conversation || {};
-        let user = address.user || {};
+    logQNAEvent(userQuery, session, kbQuestion, kbAnswer, score) {
+        let message = session.message;
+        let address = message.address || null;
+        let conversation = address.conversation || null;
+        let user = address.user || null;
         let item = {
             score: score,
             timestamp: message.timestamp,
@@ -299,7 +337,8 @@ class BotFrameworkInstrumentation {
             kbQuestion: kbQuestion,
             kbAnswer: kbAnswer
         };
-        this.trackEvent(events_1.default.QnaEvent.name, item);
+        item = this.updateProps(item);
+        this.trackEvent(events_1.default.QnaEvent.name, this.prepareLogData(session, item));
     }
     trackEvent(name, properties, measurements, tagOverrides, contextObjects) {
         console.log("\nTRACK EVENT -------\nCLIENT: ", this.instrumentationKey, "\nEVENT: ", name, "\nPROPS: ", JSON.stringify(properties, null, 2), "\nTRACK EVENT -------\n");
