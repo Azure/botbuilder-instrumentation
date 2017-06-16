@@ -7,11 +7,11 @@ const request = require("request");
 const ApplicationInsights = require("applicationinsights");
 const events_1 = require("./events");
 exports.CURRENT_BOT_NAME = "currentBotName";
-function loggerSetCurrentBotName(session, botName) {
+function setCurrentBotName(session, botName) {
     session.dialogData[exports.CURRENT_BOT_NAME] = botName;
     return session;
 }
-exports.loggerSetCurrentBotName = loggerSetCurrentBotName;
+exports.setCurrentBotName = setCurrentBotName;
 class BotFrameworkInstrumentation {
     constructor(settings) {
         this.currentBotName = "*";

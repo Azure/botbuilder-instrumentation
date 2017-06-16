@@ -24,7 +24,7 @@ export const CURRENT_BOT_NAME = "currentBotName";
  * @param session
  * @param botName
  */
-export function loggerSetCurrentBotName(session: any, botName: string): any {
+export function setCurrentBotName(session: any, botName: string): any {
   session.dialogData[CURRENT_BOT_NAME] = botName;
   return session;
 }
