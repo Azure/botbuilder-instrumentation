@@ -7,6 +7,7 @@ const request = require("request");
 const ApplicationInsights = require("applicationinsights");
 const events_1 = require("./events");
 exports.CURRENT_BOT_NAME = "currentBotName";
+const DefaultBotName = "*";
 function setCurrentBotName(session, botName) {
     session.dialogData[exports.CURRENT_BOT_NAME] = botName;
     return session;
@@ -14,7 +15,7 @@ function setCurrentBotName(session, botName) {
 exports.setCurrentBotName = setCurrentBotName;
 class BotFrameworkInstrumentation {
     constructor(settings) {
-        this.currentBotName = "*";
+        this.currentBotName = DefaultBotName;
         this.console = {};
         this.methods = {
             "debug": 0,
@@ -130,12 +131,22 @@ class BotFrameworkInstrumentation {
         _.extend(props, item);
         return props;
     }
+    getBotName(session) {
+        let name;
+        if (session.dialogData) {
+            name = (session.dialogData[exports.CURRENT_BOT_NAME]) ? session.dialogData[exports.CURRENT_BOT_NAME] : DefaultBotName;
+        }
+        if (name == DefaultBotName && session.library) {
+            name = (session.library.name) ? session.library.name : DefaultBotName;
+        }
+        return name;
+    }
     prepProps(session) {
         let message = session.message;
         let address = message.address || {};
         let conversation = address.conversation || {};
         let user = address.user || {};
-        this.currentBotName = (session.dialogData) ? session.dialogData[exports.CURRENT_BOT_NAME] : (session.library) ? session.library.name : "*";
+        this.currentBotName = this.getBotName(session);
         let item = {
             text: message.text,
             type: message.type,

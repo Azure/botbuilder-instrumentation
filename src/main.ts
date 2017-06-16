@@ -18,7 +18,7 @@ export interface IInstrumentationSettings {
 }
 
 export const CURRENT_BOT_NAME = "currentBotName";
-
+const DefaultBotName = "*"
 /**
  * Sets the name for the Bot of the current Dialog
  * @param session
@@ -32,7 +32,7 @@ export function setCurrentBotName(session: any, botName: string): any {
 export class BotFrameworkInstrumentation {
 
   private appInsightsClient: typeof ApplicationInsights.client;
-  private currentBotName: string = "*";
+  private currentBotName: string = DefaultBotName;
 
   private console = {};
   private methods = {
@@ -180,12 +180,23 @@ export class BotFrameworkInstrumentation {
     return props;
   }
 
+  private getBotName(session: builder.Session): string {
+    let name: string;
+    if (session.dialogData) {
+      name = (session.dialogData[CURRENT_BOT_NAME]) ? session.dialogData[CURRENT_BOT_NAME] : DefaultBotName
+    }
+    if (name == DefaultBotName && session.library) {
+      name = (session.library.name) ? session.library.name : DefaultBotName
+    }
+    return name;
+  }
+
   private prepProps(session: builder.Session): { [key: string]: string; } {
     let message: any = session.message;
     let address = message.address || {};
     let conversation = address.conversation || {};
     let user = address.user || {};
-    this.currentBotName = (session.dialogData) ? session.dialogData[CURRENT_BOT_NAME] : (session.library) ? session.library.name : "*";
+    this.currentBotName = this.getBotName(session);
     let item = {
       text: message.text,
       type: message.type,
