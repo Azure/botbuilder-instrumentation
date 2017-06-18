@@ -274,8 +274,11 @@ class BotFrameworkInstrumentation {
             }
         }
         else {
-            let idx = (Object.keys(this.customFields.objects).length - 1) <= -1 ? 0 : Object.keys(this.customFields.objects).length - 1;
-            this.customFields.objects[idx] = objectContainer;
+            let index = Object.values(this.customFields.objects).indexOf(objectContainer);
+            if (index == -1) {
+                let idx = (Object.keys(this.customFields.objects).length - 1) <= -1 ? 0 : Object.keys(this.customFields.objects).length - 1;
+                this.customFields.objects[idx] = objectContainer;
+            }
         }
     }
     startTransaction(session, name = '') {
