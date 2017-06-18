@@ -18,7 +18,7 @@ Key-Credential setup can be accomplished by one of the following means:
 ### Set the following env vars:
 Recommend using the `dotenv` npm package
 
-```sh
+```bash
 APPINSIGHTS_INSTRUMENTATIONKEY={App Insights Instrumentation Key}
 CG_SENTIMENT_KEY={Cognitive Services Text Analytics Key} //optional
 ```
@@ -92,11 +92,11 @@ logger.setCustomFields(session.userData, ["user_country","user_lang"]);
 ### Sending custom event data & custom errors
 Method signatures:
 
-```
+```js
 public logCustomEvent(eventName: string, session: builder.Session, properties?: { [key: string]: string })
 ```
 
-```
+```js
 public logCustomError(error: Error, session: builder.Session, properties?: { [key: string]: string })
 ```
 Use:
@@ -120,7 +120,7 @@ You can see a working sample in [QnAMakerWithFunctionOverrides](https://github.c
 
 Method signature:
 
-```
+```js
 public logQNAEvent(userQuery: string, session: builder.Session, kbQuestion: string, kbAnswer: string, score: any)
 ```
 Use:
