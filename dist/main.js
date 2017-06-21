@@ -138,9 +138,10 @@ class BotFrameworkInstrumentation {
                 .setAutoCollectRequests(true)
                 .start();
             //for all other custom events, traces etc, we are initiazling application insight clients accordignly.
+            let self = this;
             _.forEach(this.instrumentationKeys, (iKey) => {
                 let client = ApplicationInsights.getClient(iKey);
-                this.appInsightsClients.push(client);
+                self.appInsightsClients.push(client);
             });
         }
     }
