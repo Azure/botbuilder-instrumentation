@@ -19,7 +19,7 @@ export interface IInstrumentationSettings {
 
 export class BotFrameworkInstrumentation {
 
-  private appInsightsClients:Array<typeof ApplicationInsights.client>;
+  private appInsightsClients:Array<typeof ApplicationInsights.client> = [];
 
   private console = {};
   private methods = {

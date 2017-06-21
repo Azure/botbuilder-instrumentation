@@ -8,6 +8,7 @@ const ApplicationInsights = require("applicationinsights");
 const events_1 = require("./events");
 class BotFrameworkInstrumentation {
     constructor(settings) {
+        this.appInsightsClients = [];
         this.console = {};
         this.methods = {
             "debug": 0,
