@@ -8,6 +8,7 @@ const ApplicationInsights = require("applicationinsights");
 const events_1 = require("./events");
 class BotFrameworkInstrumentation {
     constructor(settings) {
+        this.appInsightsClients = [];
         this.console = {};
         this.methods = {
             "debug": 0,
@@ -17,6 +18,12 @@ class BotFrameworkInstrumentation {
             "error": 4
         };
         this.instrumentationKeys = [];
+        this.sentiments = {
+            minWords: 3,
+            url: 'https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/sentiment',
+            id: 'bot-analytics',
+            key: null
+        };
         settings = settings || {};
         _.extend(this.sentiments, settings.sentiments);
         this.sentiments.key = this.sentiments.key || process.env.CG_SENTIMENT_KEY;

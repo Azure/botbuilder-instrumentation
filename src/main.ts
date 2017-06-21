@@ -19,7 +19,7 @@ export interface IInstrumentationSettings {
 
 export class BotFrameworkInstrumentation {
 
-  private appInsightsClients:Array<typeof ApplicationInsights.client>;
+  private appInsightsClients:Array<typeof ApplicationInsights.client> = [];
 
   private console = {};
   private methods = {
@@ -31,7 +31,7 @@ export class BotFrameworkInstrumentation {
   };
 
   private instrumentationKeys: string[] = [];
-  private sentiments: {
+  private sentiments = {
       minWords: 3,
       url: 'https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/sentiment',
       id: 'bot-analytics',
