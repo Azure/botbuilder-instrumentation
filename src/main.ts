@@ -31,15 +31,10 @@ export class BotFrameworkInstrumentation {
   };
 
   private instrumentationKeys: string[] = [];
-  private sentiments: {
-      minWords: 3,
-      url: 'https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/sentiment',
-      id: 'bot-analytics',
-      key: null
-    };
+  private sentiments: ISentimentSettings = {};
 
   constructor(settings?: IInstrumentationSettings) {
-
+    this.initSentimentData();
     settings = settings || {};
     _.extend(this.sentiments, settings.sentiments);
 
@@ -65,6 +60,17 @@ export class BotFrameworkInstrumentation {
     if (!this.sentiments.key) {
       console.warn('No sentiment key was provided - text sentiments will not be collected');
     }
+
+    this.appInsightsClients = [];
+  }
+
+  private initSentimentData() {
+    this.sentiments = {
+      minWords: 3,
+      url: 'https://westus.api.cognitive.microsoft.com/text/analytics/v2.0/sentiment',
+      id: 'bot-analytics',
+      key: null
+    };
   }
 
   private formatArgs(args: any[]) {
@@ -393,7 +399,7 @@ export class BotFrameworkInstrumentation {
     tagOverrides?: {[key: string]: string;}, 
     contextObjects?: {[name: string]: any;}): void   {
     _.forEach(this.appInsightsClients, (client) => {
-      client.trackEvent(Events.EndTransaction.name, properties);
+      client.trackEvent(name, properties);
     });
   }
 
@@ -411,7 +417,7 @@ export class BotFrameworkInstrumentation {
     tagOverrides?: { [key: string]: string; }, 
     contextObjects?: { [name: string]: any; }): void {
     _.forEach(this.appInsightsClients, (client) => {
-      client.trackTrace(Events.EndTransaction.name, severityLevel, properties);
+      client.trackTrace(message, severityLevel, properties);
     });
   }
 
