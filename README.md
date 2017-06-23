@@ -138,13 +138,18 @@ logger.logQNAEvent(userQuery, session, kbQuestion, kbAnswer, score);
 ```
 
 ### Logging from multiple bots - for multibot applications
+- Call `instrumentation.setCurrentBotName()` in the rootDialog of that bot or library
 - Calling the `instrumentation.setCurrentBotName()` function ensures that the  bot currently being interacted with is identified in logging statements. 
 - You need access to the msbf `session` object as this is the 
 
 ```js
 ...(Setup - as above)
 
-instrumentation.setCurrentBotName(session, "My Bot Name")
+_lib.dialog('/', [
+    function(session, results, next) {
+    	instrumentation.setCurrentBotName(session, "My Bot Name")
+    }
+]);
 
 //'session' is the msbf session object
 ``` 
