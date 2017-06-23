@@ -6,10 +6,10 @@ const builder = require("botbuilder");
 const request = require("request");
 const ApplicationInsights = require("applicationinsights");
 const events_1 = require("./events");
-exports.CURRENT_BOT_NAME = "currentBotName";
+const CURRENT_BOT_NAME = "currentBotName";
 const DefaultBotName = "*";
 function setCurrentBotName(session, botName) {
-    session.privateConversationData[exports.CURRENT_BOT_NAME] = botName;
+    session.privateConversationData[CURRENT_BOT_NAME] = botName;
     return session;
 }
 exports.setCurrentBotName = setCurrentBotName;
@@ -143,7 +143,7 @@ class BotFrameworkInstrumentation {
         return props;
     }
     getBotName(session) {
-        let name = (session.privateConversationData.hasOwnProperty(exports.CURRENT_BOT_NAME)) ? session.privateConversationData[exports.CURRENT_BOT_NAME] : DefaultBotName;
+        let name = (session.privateConversationData.hasOwnProperty(CURRENT_BOT_NAME)) ? session.privateConversationData[CURRENT_BOT_NAME] : DefaultBotName;
         if (name === DefaultBotName && session.library) {
             name = (session.library.hasOwnProperty("name")) ? session.library.name : DefaultBotName;
         }

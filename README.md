@@ -2,6 +2,9 @@
 
 ## Getting Started
 
+### Prerequisites
+* Node v7+
+
 ### Connect to Application Insights:
 1. Create an [Application Insights service](https://azure.microsoft.com/en-gb/services/application-insights/) under your Azure subscription.
 2. Use the `Instrumentation Key` inside your bot registration page under _Instrumentation key_.
@@ -53,7 +56,7 @@ There are 2 ways to log custom parameters:
 #### 1. Log custom objects
 
 ```js
-....(Setup - as above)
+...(Setup - as above)
 
 let customDataHolder = {
     name: "Claudius",
@@ -74,7 +77,7 @@ customDataHolder["newData"]="Adding new data to be logged always";
 - Well just provide the data container and the key(s) you want logged and we'll ignore all other keys in that object
 
 ```js
-....(Setup - as above)
+...(Setup - as above)
 
 session.userData["user_cc"] = '8808-8888-8080-8888';
 session.userData["user_country"] = 'USA';
@@ -102,7 +105,7 @@ public logCustomError(error: Error, session: builder.Session, properties?: { [ke
 Use:
 
 ```js
-....(Setup - as above)
+...(Setup - as above)
 
 let customEventName = 'myCustomEventName'; 
 
@@ -126,7 +129,7 @@ public logQNAEvent(userQuery: string, session: builder.Session, kbQuestion: stri
 Use:
 
 ```js
-....(Setup - as above)
+...(Setup - as above)
 
 logger.logQNAEvent(userQuery, session, kbQuestion, kbAnswer, score);
 
@@ -134,6 +137,19 @@ logger.logQNAEvent(userQuery, session, kbQuestion, kbAnswer, score);
 
 ```
 
+### Logging from multiple bots - for multibot applications
+- Calling the `instrumentation.setCurrentBotName()` function ensures that the  bot currently being interacted with is identified in logging statements. 
+- You need access to the msbf `session` object as this is the 
+
+```js
+...(Setup - as above)
+
+instrumentation.setCurrentBotName(session, "My Bot Name")
+
+//'session' is the msbf session object
+``` 
+
+You can see a working integration sample in the [multilingual-uber-bot](https://github.com/User1m/multilingual-uber-bot) sample
 
 ## Built With
 

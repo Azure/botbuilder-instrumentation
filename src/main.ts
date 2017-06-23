@@ -25,7 +25,7 @@ export interface IAutoLogOptions {
   autoCollectPerf?: boolean;
 }
 
-export const CURRENT_BOT_NAME = "currentBotName";
+const CURRENT_BOT_NAME = "currentBotName";
 const DefaultBotName = "*"
 /**
  * Sets the name for the Bot of the current Dialog
@@ -353,7 +353,7 @@ export class BotFrameworkInstrumentation {
    */
   setCustomFields(objectContainer: Object, keys?: string | string[]) {
     if (keys) {
-      let index = Object.values(this.customFields.containers).indexOf(objectContainer)
+      let index = (<any>Object).values(this.customFields.containers).indexOf(objectContainer)
       let keyValues: string[] = Array.isArray(keys) ? keys : [keys];
       if (index == -1) {
         let idx = (Object.keys(this.customFields.containers).length - 1) <= -1 ? 0 : Object.keys(this.customFields.containers).length - 1;
@@ -367,7 +367,7 @@ export class BotFrameworkInstrumentation {
         }
       }
     } else {
-      let index = Object.values(this.customFields.objects).indexOf(objectContainer)
+      let index = (<any>Object).values(this.customFields.objects).indexOf(objectContainer)
       if (index == -1) {
         let idx = (Object.keys(this.customFields.objects).length - 1) <= -1 ? 0 : Object.keys(this.customFields.objects).length - 1;
         this.customFields.objects[idx] = objectContainer;
