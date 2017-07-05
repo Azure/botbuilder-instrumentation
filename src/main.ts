@@ -39,6 +39,8 @@ export interface ICustomFields {
   dialogData?: string[];
 }
 
+const PROPERTY_BAGS = [ 'userData', 'conversationData', 'privateConversationData', 'dialogData' ];
+
 export class BotFrameworkInstrumentation {
 
   private appInsightsClients:Array<typeof ApplicationInsights.client> = [];
@@ -363,7 +365,7 @@ export class BotFrameworkInstrumentation {
 
     // Adding custom fields if present
     if (isSession && this.customFields) {
-      [ 'userData', 'conversationData', 'privateConversationData', 'dialogData' ].forEach(propertyBag => {
+      PROPERTY_BAGS.forEach(propertyBag => {
         let properties = this.customFields[propertyBag] || [];
         properties.forEach(property => {
           item[property] = session[propertyBag][property] || null;
