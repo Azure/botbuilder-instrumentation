@@ -17,17 +17,23 @@ class BotFrameworkInstrumentation {
             "warn": 3,
             "error": 4
         };
+        /**
+         * This is a list of custom fields that will be pushed with the logging of each event
+         */
+        this.customFields = null;
         this.instrumentationKeys = [];
         this.sentiments = {};
+        this.settings = {};
         this.initSentimentData();
-        settings = settings || {};
-        _.extend(this.sentiments, settings.sentiments);
+        this.settings = settings || {};
+        this.customFields = this.settings.customFields || {};
+        _.extend(this.sentiments, this.settings.sentiments);
         this.sentiments.key = this.sentiments.key || process.env.CG_SENTIMENT_KEY;
-        if (settings.instrumentationKey) {
+        if (this.settings.instrumentationKey) {
             this.instrumentationKeys =
-                Array.isArray(settings.instrumentationKey) ?
-                    settings.instrumentationKey :
-                    [settings.instrumentationKey];
+                Array.isArray(this.settings.instrumentationKey) ?
+                    this.settings.instrumentationKey :
+                    [this.settings.instrumentationKey];
         }
         else {
             if (process.env.APPINSIGHTS_INSTRUMENTATIONKEY) {
@@ -63,7 +69,7 @@ class BotFrameworkInstrumentation {
                     let stdout = null;
                     try {
                         let msg = this.formatArgs(args);
-                        this.trackTrace(msg, this.methods[method]);
+                        this.logTrace(null, msg, this.methods[method]);
                         stdout = process.stdout;
                         process.stdout = process.stderr;
                         original.apply(console, args);
@@ -81,11 +87,6 @@ class BotFrameworkInstrumentation {
             return;
         if (text.match(/\S+/g).length < this.sentiments.minWords)
             return;
-        let message = session.message || {};
-        let timestamp = message.timestamp;
-        let address = message.address || {};
-        let conversation = address.conversation || {};
-        let user = address.user || {};
         request({
             url: this.sentiments.url,
             method: 'POST',
@@ -105,7 +106,7 @@ class BotFrameworkInstrumentation {
             }
         }, (error, response, body) => {
             if (error) {
-                return this.trackException(error);
+                return this.logException(session, error);
             }
             try {
                 let result = _.find(body.documents, { id: this.sentiments.id }) || {};
@@ -113,29 +114,23 @@ class BotFrameworkInstrumentation {
                 if (isNaN(score)) {
                     throw new Error('Could not collect sentiment');
                 }
-                var item = {
-                    text: text,
-                    score: score,
-                    timestamp: timestamp,
-                    channel: address.channelId,
-                    conversationId: conversation.id,
-                    userId: user.id,
-                    userName: user.name
-                };
-                this.trackEvent(events_1.default.Sentiment.name, item);
+                var item = { text: text, score: score };
+                this.logEvent(session, events_1.default.Sentiment.name, item);
             }
             catch (error) {
-                return this.trackException(error);
+                return this.logException(session, error);
             }
         });
     }
     setupInstrumentation() {
         if (this.instrumentationKeys && this.instrumentationKeys.length > 0) {
             //we are setting the automatic updates to the first instumentation key.
+            let autoCollectOptions = this.settings && this.settings.autoLogOptions || {};
             ApplicationInsights.setup(this.instrumentationKeys[0])
-                .setAutoCollectConsole(true)
-                .setAutoCollectExceptions(true)
-                .setAutoCollectRequests(true)
+                .setAutoCollectConsole(autoCollectOptions.autoCollectConsole || false)
+                .setAutoCollectExceptions(autoCollectOptions.autoCollectExceptions || false)
+                .setAutoCollectRequests(autoCollectOptions.autoCollectRequests || false)
+                .setAutoCollectPerformance(autoCollectOptions.autoCollectPerf || false)
                 .start();
             //for all other custom events, traces etc, we are initiazling application insight clients accordignly.
             let self = this;
@@ -153,19 +148,11 @@ class BotFrameworkInstrumentation {
                 botbuilder: (session, next) => {
                     try {
                         let message = session.message;
-                        let address = message.address || {};
-                        let conversation = address.conversation || {};
-                        let user = address.user || {};
                         let item = {
                             text: message.text,
-                            type: message.type,
-                            timestamp: message.timestamp,
-                            conversationId: conversation.id,
-                            channel: address.channelId,
-                            userId: user.id,
-                            userName: user.name
+                            type: message.type
                         };
-                        this.trackEvent(events_1.default.UserMessage.name, item);
+                        this.logEvent(session, events_1.default.UserMessage.name, item);
                         self.collectSentiment(session, message.text);
                     }
                     catch (e) {
@@ -177,18 +164,11 @@ class BotFrameworkInstrumentation {
                 send: (message, next) => {
                     try {
                         if (message.type == "message") {
-                            let address = message.address || {};
-                            let conversation = address.conversation || {};
-                            let user = address.user || {};
                             let item = {
                                 text: message.text,
-                                type: message.type,
-                                timestamp: message.timestamp,
-                                conversationId: conversation.id,
-                                userId: user.id,
-                                userName: user.name
+                                type: message.type
                             };
-                            this.trackEvent(events_1.default.BotMessage.name, item);
+                            this.logEvent(message, events_1.default.BotMessage.name, item);
                         }
                     }
                     catch (e) {
@@ -203,28 +183,20 @@ class BotFrameworkInstrumentation {
         let self = this;
         builder.IntentDialog.prototype.recognize = (() => {
             let _recognize = builder.IntentDialog.prototype.recognize;
-            return function (context, cb) {
+            return function (session, cb) {
                 let _dialog = this;
-                _recognize.apply(_dialog, [context, (err, result) => {
-                        let message = context.message;
-                        let address = message.address || {};
-                        let conversation = address.conversation || {};
-                        let user = address.user || {};
+                _recognize.apply(_dialog, [session, (err, result) => {
+                        let message = session.message;
                         let item = {
                             text: message.text,
-                            timestamp: message.timestamp,
                             intent: result && result.intent,
-                            channel: address.channelId,
                             score: result && result.score,
                             withError: !err,
-                            error: err,
-                            conversationId: conversation.id,
-                            userId: user.id,
-                            userName: user.name
+                            error: err
                         };
                         //there is no point sending 0 score intents to the telemetry.
                         if (item.score > 0) {
-                            self.trackEvent(events_1.default.Intent.name, item);
+                            self.logEvent(session, events_1.default.Intent.name, item);
                         }
                         // Tracking entities for the event
                         if (result && result.entities) {
@@ -232,7 +204,7 @@ class BotFrameworkInstrumentation {
                                 let entityItem = _.clone(item);
                                 entityItem.entityType = value.type;
                                 entityItem.entityValue = value.entity;
-                                self.trackEvent(events_1.default.Entity.name, entityItem);
+                                self.logEvent(session, events_1.default.Entity.name, entityItem);
                             });
                         }
                         // Todo: on "set alarm" utterence, failiure
@@ -241,36 +213,18 @@ class BotFrameworkInstrumentation {
             };
         })();
     }
-    startTransaction(context, name = '') {
-        let message = context.message;
-        let address = message.address || {};
-        let conversation = address.conversation || {};
-        let user = address.user || {};
+    startTransaction(session, name = '') {
         let item = {
-            name: name,
-            timestamp: message.timestamp,
-            channel: address.channelId,
-            conversationId: conversation.id,
-            userId: user.id,
-            userName: user.name
+            name: name
         };
-        this.trackEvent(events_1.default.StartTransaction.name, item);
+        this.logEvent(session, events_1.default.StartTransaction.name, item);
     }
-    endTransaction(context, name = '', successful = true) {
-        let message = context.message;
-        let address = message.address || {};
-        let conversation = address.conversation || {};
-        let user = address.user || {};
+    endTransaction(session, name = '', successful = true) {
         let item = {
             name: name,
-            successful: successful.toString(),
-            timestamp: message.timestamp,
-            channel: address.channelId,
-            conversationId: conversation.id,
-            userId: user.id,
-            userName: user.name
+            successful: successful.toString()
         };
-        this.trackEvent(events_1.default.EndTransaction.name, item);
+        this.logEvent(session, events_1.default.EndTransaction.name, item);
     }
     /**
      * Logs QNA maker service data
@@ -280,32 +234,31 @@ class BotFrameworkInstrumentation {
      * @param kbAnswer
      * @param score
      */
-    trackQNAEvent(context, userQuery, kbQuestion, kbAnswer, score) {
-        let message = context.message;
-        let address = message.address || {};
-        let conversation = address.conversation || {};
-        let user = address.user || {};
+    trackQNAEvent(session, userQuery, kbQuestion, kbAnswer, score) {
         let item = {
             score: score,
-            timestamp: message.timestamp,
-            channel: address.channelId,
-            conversationId: conversation.id,
-            userId: user.id,
-            userName: user.name,
             userQuery: userQuery,
             kbQuestion: kbQuestion,
             kbAnswer: kbAnswer
         };
-        this.trackEvent(events_1.default.QnaEvent.name, item);
+        this.logEvent(session, events_1.default.QnaEvent.name, item);
     }
-    /**
-     * Logs your own event with custom data
-     * @param context
-     * @param eventName
-     * @param keyValuePair an object with custom properties
-     */
-    trackCustomEvent(context, eventName, keyValuePair) {
-        let message = context.message;
+    trackCustomEvent(session, eventName, customProperties) {
+        this.logEvent(session, eventName, customProperties);
+    }
+    getLogProperties(session, properties) {
+        if (session == null) {
+            return properties || null;
+        }
+        let message = {};
+        let isSession = false;
+        if (session.message) {
+            isSession = true;
+            message = session.message;
+        }
+        else {
+            message = session;
+        }
         let address = message.address || {};
         let conversation = address.conversation || {};
         let user = address.user || {};
@@ -313,50 +266,45 @@ class BotFrameworkInstrumentation {
             timestamp: message.timestamp,
             channel: address.channelId,
             conversationId: conversation.id,
-            userId: user.id,
-            userName: user.name
+            userId: user.id
         };
-        //merge the custom properties with the defaults
-        let eventData = Object.assign(item, keyValuePair);
-        this.trackEvent(eventName, eventData);
+        if (!this.settings.omitUserName) {
+            item.userName = user.name;
+        }
+        // Adding custom fields if present
+        if (isSession) {
+            ['userData', 'conversationData', 'privateConversationData', 'dialogData'].forEach(propertyBag => {
+                let properties = this.customFields[propertyBag] || [];
+                properties.forEach(property => {
+                    item[property] = session[propertyBag][property] || null;
+                });
+            });
+        }
+        return Object.assign(item, properties);
     }
     /**
      * Log a user action or other occurrence.
      * @param name              A string to identify this event in the portal.
      * @param properties        map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
-     * @param measurements      map[string, number] - metrics associated with this event, displayed in Metrics Explorer on the portal. Defaults to empty.
-     * @param tagOverrides      the context tags to use for this telemetry which overwrite default context values
-     * @param contextObjects    map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
      */
-    trackEvent(name, properties, measurements, tagOverrides, contextObjects) {
-        _.forEach(this.appInsightsClients, (client) => {
-            client.trackEvent(name, properties);
-        });
+    logEvent(session, name, properties) {
+        this.appInsightsClients.forEach(client => client.trackEvent(name, this.getLogProperties(session, properties)));
     }
     /**
      * Log a trace message
      * @param message        A string to identify this event in the portal.
      * @param properties     map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
-     * @param tagOverrides   the context tags to use for this telemetry which overwrite default context values
-     * @param contextObjects map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
      */
-    trackTrace(message, severityLevel, properties, tagOverrides, contextObjects) {
-        _.forEach(this.appInsightsClients, (client) => {
-            client.trackTrace(message, severityLevel, properties);
-        });
+    logTrace(session, message, severityLevel, properties) {
+        this.appInsightsClients.forEach(client => client.trackTrace(message, severityLevel, this.getLogProperties(session, properties)));
     }
     /**
      * Log an exception you have caught.
      * @param   exception   An Error from a catch clause, or the string error message.
      * @param   properties  map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
-     * @param   measurements    map[string, number] - metrics associated with this event, displayed in Metrics Explorer on the portal. Defaults to empty.
-     * @param   tagOverrides the context tags to use for this telemetry which overwrite default context values
-     * @param   contextObjects        map[string, contextObject] - An event-specific context that will be passed to telemetry processors handling this event before it is sent. For a context spanning your entire operation, consider appInsights.getCorrelationContext
      */
-    trackException(exception, properties, measurements, tagOverrides, contextObjects) {
-        _.forEach(this.appInsightsClients, (client) => {
-            client.trackException(exception, properties);
-        });
+    logException(session, exception, properties) {
+        this.appInsightsClients.forEach(client => client.trackException(exception, this.getLogProperties(session, properties)));
     }
 }
 exports.BotFrameworkInstrumentation = BotFrameworkInstrumentation;

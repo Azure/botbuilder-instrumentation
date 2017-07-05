@@ -98,5 +98,17 @@ exports.default = {
             kbQuestion: 'The scored knowledge base question',
             kbAnswer: 'The knowledge base answer'
         }
+    },
+    CustomEvent: {
+        name: 'MBFEvent.CustomEvent',
+        format: {
+            text: 'message.text',
+            type: 'message.type',
+            timestamp: 'message.timestamp',
+            conversationId: 'message.address.conversation.id',
+            channel: 'address.channelId',
+            userId: 'user.id',
+            userName: 'user.name'
+        }
     }
 };

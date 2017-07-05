@@ -1,7 +1,7 @@
 # Adding Logging to an Existing bot
 Follow these steps:
 
-## Connect to Application Insights
+## Getting Started
 
 1. Create an Application Insights service under your subscription.
 2. Use the `Instrumentation Key` inside your bot registration page under _Instrumentation key_.
