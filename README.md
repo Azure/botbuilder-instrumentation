@@ -62,6 +62,27 @@ loggins.trackQNAEvent(context, userQuery, kbQuestion, kbAnswer, score);
 //You can see a working sample in [https://github.com/Microsoft/BotBuilder-CognitiveServices/tree/master/Node/samples/QnAMakerWithFunctionOverrides](https://github.com/Microsoft/BotBuilder-CognitiveServices/tree/master/Node/samples/QnAMakerWithFunctionOverrides)
 ```
 
+## Logging custom properties from session
+
+```js
+var instrumentation = require('botbuilder-instrumentation');
+
+// Setting up advanced instrumentation
+let logging = new instrumentation.BotFrameworkInstrumentation({ 
+  instrumentationKey: ["main insturmnation key","secondary instumentation key"],
+  sentimentKey: process.env.CG_SENTIMENT_KEY,
+  customFields: {
+    userData: [ "CUSTOM_PROPERTY" ]
+  }
+});
+logging.monitor(bot);
+let customEventName = 'myCustomEventName'; //This will show up as the event name in Application Insights.
+let customEventData = { customeDataA: 'customValueA', customDataB: 3 };
+logging.trackCustomEvent(context, customEventName, customEventData); //Custom key-value data. It will be avaiable under the customDimentions column in Application Insights.
+```
+
+You can use any or all `userData`, `conversationData`, `privateConversationData`, `dialogData`.
+
 ## Sending custom event data
 
 ```js
