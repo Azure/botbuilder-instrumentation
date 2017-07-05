@@ -26,7 +26,7 @@ class BotFrameworkInstrumentation {
         this.settings = {};
         this.initSentimentData();
         this.settings = settings || {};
-        this.customFields = this.settings.customFields || {};
+        this.customFields = this.settings.customFields || null;
         _.extend(this.sentiments, this.settings.sentiments);
         this.sentiments.key = this.sentiments.key || process.env.CG_SENTIMENT_KEY;
         if (this.settings.instrumentationKey) {
@@ -272,7 +272,7 @@ class BotFrameworkInstrumentation {
             item.userName = user.name;
         }
         // Adding custom fields if present
-        if (isSession) {
+        if (isSession && this.customFields) {
             ['userData', 'conversationData', 'privateConversationData', 'dialogData'].forEach(propertyBag => {
                 let properties = this.customFields[propertyBag] || [];
                 properties.forEach(property => {
