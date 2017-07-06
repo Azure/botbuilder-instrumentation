@@ -229,11 +229,6 @@ class BotFrameworkInstrumentation {
     }
     /**
      * Logs QNA maker service data
-     * @param context
-     * @param userQuery
-     * @param kbQuestion
-     * @param kbAnswer
-     * @param score
      */
     trackQNAEvent(session, userQuery, kbQuestion, kbAnswer, score) {
         let item = {
@@ -244,8 +239,12 @@ class BotFrameworkInstrumentation {
         };
         this.logEvent(session, events_1.default.QnaEvent.name, item);
     }
-    trackCustomEvent(session, eventName, customProperties) {
-        this.logEvent(session, eventName, customProperties);
+    trackCustomEvent(eventName, customProperties, session = null) {
+        const logEventName = eventName || events_1.default.CustomEvent.name;
+        this.logEvent(session, logEventName, customProperties);
+    }
+    trackEvent(customProperties, session = null) {
+        this.trackCustomEvent(null, customProperties, session);
     }
     getLogProperties(session, properties) {
         if (session == null) {
@@ -253,6 +252,7 @@ class BotFrameworkInstrumentation {
         }
         let message = {};
         let isSession = false;
+        // Checking if the received object is a session or a message
         if (session.message) {
             isSession = true;
             message = session.message;
@@ -272,7 +272,7 @@ class BotFrameworkInstrumentation {
         if (!this.settings.omitUserName) {
             item.userName = user.name;
         }
-        // Adding custom fields if present
+        // Adding custom fields if supplied in the constructor settings
         if (isSession && this.customFields) {
             PROPERTY_BAGS.forEach(propertyBag => {
                 let properties = this.customFields[propertyBag] || [];
