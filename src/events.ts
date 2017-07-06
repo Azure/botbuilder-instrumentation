@@ -1,8 +1,8 @@
 export default {
   UserMessage: {
     name: 'MBFEvent.UserMessage',
-    format: { 
-      text: 'message.text', 
+    format: {
+      text: 'message.text',
       type: 'message.type',
       timestamp: 'message.timestamp',
       conversationId: 'message.address.conversation.id',
@@ -13,8 +13,8 @@ export default {
   },
   BotMessage: {
     name: 'MBFEvent.BotMessage',
-    format: { 
-      text: 'message.text', 
+    format: {
+      text: 'message.text',
       type: 'message.type',
       timestamp: '(new Date()).toISOString()',
       conversationId: 'message.address.conversation.id'
@@ -22,7 +22,7 @@ export default {
   },
   StartTransaction: {
     name: 'MBFEvent.StartTransaction',
-    format: { 
+    format: {
       name: 'conversion name',
       timestamp: 'message.timestamp',
       channel: 'address.channelId - facebook/slack/webchat/etc...',
@@ -35,7 +35,7 @@ export default {
     name: 'MBFEvent.EndTransaction',
     format: {
       name: 'conversion name - similar to start',
-      successful: 'true/false', 
+      successful: 'true/false',
       count: 'default is 1, but can log more than 1',
       timestamp: 'message.timestamp',
       channel: 'address.channelId',
@@ -47,7 +47,7 @@ export default {
   },
   Intent: {
     name: 'MBFEvent.Intent',
-    format: { 
+    format: {
       intent: 'intent name / id / string',
       state: 'current session state',
       channel: 'address.channelId',
@@ -59,7 +59,7 @@ export default {
   },
   Entity: {
     name: 'MBFEvent.Entity',
-    format: { 
+    format: {
       intent: 'intent name / id / string',
       entityType: 'entity type',
       entityValue: 'entity value',
@@ -73,8 +73,8 @@ export default {
   },
   Sentiment: {
     name: 'MBFEvent.Sentiment',
-    format: { 
-      text: 'message.text', 
+    format: {
+      text: 'message.text',
       score: 'sentiment score',
       timestamp: 'message.timestamp',
       channel: 'address.channelId',
@@ -85,7 +85,7 @@ export default {
   },
   QnaEvent: {
     name: 'MBFEvent.QNAEvent',
-    format: { 
+    format: {
       score: 'qna score',
       timestamp: 'message.timestamp',
       channel: 'address.channelId',
@@ -95,6 +95,18 @@ export default {
       userQuery: 'The original user query',
       kbQuestion: 'The scored knowledge base question',
       kbAnswer: 'The knowledge base answer'
+    }
+  },
+  CustomEvent: {
+    name: 'MBFEvent.CustomEvent',
+    format: {
+      text: 'message.text',
+      type: 'message.type',
+      timestamp: 'message.timestamp',
+      conversationId: 'message.address.conversation.id',
+      channel: 'address.channelId',
+      userId: 'user.id',
+      userName: 'user.name'
     }
   }
 };
