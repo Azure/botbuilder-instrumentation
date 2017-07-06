@@ -383,7 +383,8 @@ export class BotFrameworkInstrumentation {
    * @param properties        map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
    */
   private logEvent(session: builder.Session, name: string, properties?: IDictionary): void   {
-    this.appInsightsClients.forEach(client => client.trackEvent(name, this.getLogProperties(session, properties)));
+    let logProperties =  this.getLogProperties(session, properties);
+    this.appInsightsClients.forEach(client => client.trackEvent(name, logProperties));
   }
 
   /**
@@ -392,7 +393,8 @@ export class BotFrameworkInstrumentation {
    * @param properties     map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
    */
   private logTrace(session: builder.Session, message: string, severityLevel: any, properties?: IDictionary) {
-    this.appInsightsClients.forEach(client => client.trackTrace(message, severityLevel, this.getLogProperties(session, properties)));
+    let logProperties =  this.getLogProperties(session, properties);
+    this.appInsightsClients.forEach(client => client.trackTrace(message, severityLevel, logProperties));
   }
 
   /**
@@ -401,6 +403,7 @@ export class BotFrameworkInstrumentation {
    * @param   properties  map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
    */
   private logException(session: builder.Session, exception: Error, properties?: IDictionary) {
-    this.appInsightsClients.forEach(client => client.trackException(exception, this.getLogProperties(session, properties)));
+    let logProperties =  this.getLogProperties(session, properties);
+    this.appInsightsClients.forEach(client => client.trackException(exception, logProperties));
   }
 }

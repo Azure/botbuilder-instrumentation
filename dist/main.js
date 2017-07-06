@@ -289,7 +289,8 @@ class BotFrameworkInstrumentation {
      * @param properties        map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
      */
     logEvent(session, name, properties) {
-        this.appInsightsClients.forEach(client => client.trackEvent(name, this.getLogProperties(session, properties)));
+        let logProperties = this.getLogProperties(session, properties);
+        this.appInsightsClients.forEach(client => client.trackEvent(name, logProperties));
     }
     /**
      * Log a trace message
@@ -297,7 +298,8 @@ class BotFrameworkInstrumentation {
      * @param properties     map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
      */
     logTrace(session, message, severityLevel, properties) {
-        this.appInsightsClients.forEach(client => client.trackTrace(message, severityLevel, this.getLogProperties(session, properties)));
+        let logProperties = this.getLogProperties(session, properties);
+        this.appInsightsClients.forEach(client => client.trackTrace(message, severityLevel, logProperties));
     }
     /**
      * Log an exception you have caught.
@@ -305,7 +307,8 @@ class BotFrameworkInstrumentation {
      * @param   properties  map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
      */
     logException(session, exception, properties) {
-        this.appInsightsClients.forEach(client => client.trackException(exception, this.getLogProperties(session, properties)));
+        let logProperties = this.getLogProperties(session, properties);
+        this.appInsightsClients.forEach(client => client.trackException(exception, logProperties));
     }
 }
 exports.BotFrameworkInstrumentation = BotFrameworkInstrumentation;
