@@ -6,8 +6,7 @@ You can leverage the events from this module using [Ibex Dashboard](https://gith
 
 1. Create an Application Insights service under your subscription.
 2. Use the `Instrumentation Key` inside your bot registration page under _Instrumentation key_.
-3. Under the App Insights service, go to **API Access** and copy **Application ID**
-4. Under the App Insights service, go to **API Access >> New Key** with _Read_ permissions and copy **Api Key**.
+
 
 ## Connect to Cognitive Services
 This is an optional step in case you want user messages to be analyzed for sentiments.
@@ -87,8 +86,8 @@ let customEventName = 'myCustomEventName';
 // Custom key-value data. It will be avaiable under the customDimensions column in Application Insights.
 let customEventData = { customDataA: 'customValueA', customDataB: 3 };
 
-// You can log using context, in which case, session variables like timespan, userId etc will also be logged
-logging.trackCustomEvent(customEventName, customEventData, context); 
+// You can log using context (session), in which case, session variables like timespan, userId etc will also be logged
+logging.trackCustomEvent(customEventName, customEventData, session); 
 
 // You can log without a session/context
 logging.trackCustomEvent(customEventName, customEventData); 
