@@ -205,7 +205,7 @@ export class BotFrameworkInstrumentation {
     }
   }
 
-  monitor (bot: builder.UniversalBot) {
+  monitor (bot: builder.UniversalBot, recognizer?: builder.LuisRecognizer) {
 
     this.setupInstrumentation();
 
@@ -289,7 +289,49 @@ export class BotFrameworkInstrumentation {
           return cb(err, result);
         }]);          
       };
-    })();  
+    })();
+
+    if (recognizer) {
+      recognizer.recognize = (() => {
+        let _recognize = recognizer.recognize;
+        return function(session, cb) {
+
+          let _self = this;
+          _recognize.apply(_self, [session, (err, result) => {
+
+            let message = session.message;
+
+            let item: any =  { 
+              text: message.text,
+              intent: result && result.intent, 
+              score: result && result.score,
+              withError: !err,
+              error: err
+            };
+            
+            //there is no point sending 0 score intents to the telemetry.
+            if (item.score > 0) {
+              self.logEvent(session, Events.Intent.name, item);
+            }
+
+            // Tracking entities for the event
+            if (result && result.entities) {
+              result.entities.forEach(value => {
+
+                let entityItem = _.clone(item);
+                entityItem.entityType = value.type;
+                entityItem.entityValue = value.entity
+                self.logEvent(session, Events.Entity.name, entityItem);
+
+              });
+            }
+
+            // Todo: on "set alarm" utterence, failiure
+            return cb(err, result);
+          }]);          
+        };
+      })();
+    }
   }
 
   startTransaction(session: builder.Session, name = '') {
