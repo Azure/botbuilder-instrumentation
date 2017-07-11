@@ -34,10 +34,11 @@ let logging = new instrumentation.BotFrameworkInstrumentation({
   instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATIONKEY,
   sentimentKey: process.env.CG_SENTIMENT_KEY,
 });
-logging.monitor(bot);
-```
+let recognizaer = new builder.LuisRecognizer('...');
+logging.monitor(bot, recognizer);
+``` 
 
-If you're using a `LuisRecognizer', use the following code in addition:
+If you're not using a `LuisRecognizer', use the following code in addition:
 
 ```js
 var instrumentation = require('botbuilder-instrumentation');
@@ -47,9 +48,8 @@ let logging = new instrumentation.BotFrameworkInstrumentation({
   instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATIONKEY,
   sentimentKey: process.env.CG_SENTIMENT_KEY,
 });
-let recognizaer = new builder.LuisRecognizer('...');
-logging.monitor(bot, recognizer);
-``` 
+logging.monitor(bot);
+```
 
 Although `CG_SENTIMENT_KEY` is optional, it is recommended if you're using [Ibex Dashboard](https://github.com/CatalystCode/ibex-dashboard), in which case, adding sentiment analytsis will add sentiments overview to the dashboard along with a sentiment icon next to all conversations.
 
