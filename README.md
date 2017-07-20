@@ -6,12 +6,11 @@ You can leverage the events from this module using [Ibex Dashboard](https://gith
 
 1. Create an Application Insights service under your subscription.
 2. Use the `Instrumentation Key` inside your bot registration page under _Instrumentation key_.
-3. Under the App Insights service, go to **API Access** and copy **Application ID**
-4. Under the App Insights service, go to **API Access >> New Key** with _Read_ permissions and copy **Api Key**.
+
 
 ## Connect to Cognitive Services
-This is an optional step in case you want user messages to be analised for setiments.
-Create a new [Sentiment Analisys Service under Cognitive Services](https://www.microsoft.com/cognitive-services/en-us/text-analytics-api).
+This is an optional step in case you want user messages to be analyzed for sentiments.
+Create a new [Sentiment Analysis Service under Cognitive Services](https://www.microsoft.com/cognitive-services/en-us/text-analytics-api).
 When creating the service, make sure to mark **Text Analytics - Preview**.
 
 ## Setting Environment Variables
@@ -27,7 +26,7 @@ CG_SENTIMENT_KEY={Cognitive Services Text Analytics Key}
 ## Adding instrumentation to your code
 
 ```js
-var instrumentation = require('botbuilder-instrumentation');
+const instrumentation = require('botbuilder-instrumentation');
 
 // Setting up advanced instrumentation
 let logging = new instrumentation.BotFrameworkInstrumentation({ 
@@ -51,13 +50,13 @@ let logging = new instrumentation.BotFrameworkInstrumentation({
 logging.monitor(bot);
 ```
 
-Although `CG_SENTIMENT_KEY` is optional, it is recommended if you're using [Ibex Dashboard](https://github.com/CatalystCode/ibex-dashboard), in which case, adding sentiment analytsis will add sentiments overview to the dashboard along with a sentiment icon next to all conversations.
+Although `CG_SENTIMENT_KEY` is optional, it is recommended if you're using [Ibex Dashboard](https://github.com/CatalystCode/ibex-dashboard), in which case, adding sentiment analysis will add sentiments overview to the dashboard along with a sentiment icon next to all conversations.
 
 ## Sending logs for QnA maker service
 
 ```js
 // Hook into the result function of QNA to extract relevant data for logging.
-loggins.trackQNAEvent(context, userQuery, kbQuestion, kbAnswer, score);
+logging.trackQNAEvent(context, userQuery, kbQuestion, kbAnswer, score);
 ```
 
 You can see how to implement a QnA service [here](https://github.com/Microsoft/BotBuilder-CognitiveServices/tree/master/Node/samples/QnAMakerWithFunctionOverrides).
@@ -89,7 +88,7 @@ let logger = new instrumentation.BotFrameworkInstrumentation({
 });
 ```
 
-The `CUSTOM_PROPERTY` will be searched for in the session/context object of each event, and will be added automatically under customDimentions in Application Insights.
+The `CUSTOM_PROPERTY` will be searched for in the session/context object of each event and will be added automatically under customDimensions in Application Insights.
 If it does not exist, it will not be added to the logged events.
 You can use any, all or none of the property bags under session: `userData`, `conversationData`, `privateConversationData`, `dialogData`.
 
@@ -98,11 +97,11 @@ You can use any, all or none of the property bags under session: `userData`, `co
 ```js
 // This will show up as the event name in Application Insights.
 let customEventName = 'myCustomEventName';
-// Custom key-value data. It will be avaiable under the customDimentions column in Application Insights.
-let customEventData = { customeDataA: 'customValueA', customDataB: 3 };
+// Custom key-value data. It will be avaiable under the customDimensions column in Application Insights.
+let customEventData = { customDataA: 'customValueA', customDataB: 3 };
 
-// You can log using context, in which case, session variables like timespan, userId etc will also be logged
-logging.trackCustomEvent(customEventName, customEventData, context); 
+// You can log using context (session), in which case, session variables like timespan, userId etc will also be logged
+logging.trackCustomEvent(customEventName, customEventData, session); 
 
 // You can log without a session/context
 logging.trackCustomEvent(customEventName, customEventData); 
