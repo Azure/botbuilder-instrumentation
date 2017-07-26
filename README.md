@@ -31,7 +31,9 @@ const instrumentation = require('botbuilder-instrumentation');
 // Setting up advanced instrumentation
 let logging = new instrumentation.BotFrameworkInstrumentation({ 
   instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATIONKEY,
-  sentimentKey: process.env.CG_SENTIMENT_KEY,
+  sentiments: {
+    key: process.env.CG_SENTIMENT_KEY,
+  }
 });
 let recognizaer = new builder.LuisRecognizer('...');
 logging.monitor(bot, recognizer);
@@ -45,7 +47,9 @@ var instrumentation = require('botbuilder-instrumentation');
 // Setting up advanced instrumentation
 let logging = new instrumentation.BotFrameworkInstrumentation({ 
   instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATIONKEY,
-  sentimentKey: process.env.CG_SENTIMENT_KEY,
+  sentiments: {
+    key: process.env.CG_SENTIMENT_KEY,
+  }
 });
 logging.monitor(bot);
 ```
@@ -66,7 +70,9 @@ You can see how to implement a QnA service [here](https://github.com/Microsoft/B
 ```js
 let logger = new instrumentation.BotFrameworkInstrumentation({
   instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATIONKEY,
-  sentimentKey: process.env.CG_SENTIMENT_KEY,
+  sentiments: {
+    key: process.env.CG_SENTIMENT_KEY,
+  },
 
   // Will omit the user name from the logs for anonimization
   omitUserName: true,
