@@ -108,5 +108,17 @@ export default {
       userId: 'user.id',
       userName: 'user.name'
     }
+  },
+  GoalTriggeredEvent: {
+    name: 'MBFEvent.GoalEvent',
+    format: {
+      text: 'message.text',
+      type: 'message.type',
+      timestamp: 'message.timestamp',
+      conversationId: 'message.address.conversation.id',
+      channel: 'address.channelId',
+      userId: 'user.id',
+      userName: 'user.name',
+    }
   }
 };
