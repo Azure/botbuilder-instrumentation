@@ -378,6 +378,11 @@ export class BotFrameworkInstrumentation {
   trackEvent(customProperties: IDictionary, session: builder.Session = null) {
     this.trackCustomEvent(null, customProperties, session);
   }
+
+  trackGoalTriggeredEvent(goalName:string, customProperties: IDictionary, session: builder.Session) {
+    customProperties['GoalName'] = goalName;
+    this.logEvent(session, Events.GoalTriggeredEvent.name, customProperties);
+  }
   
   private getLogProperties(session: builder.Session | builder.IMessage, properties?: IDictionary): any {
 
