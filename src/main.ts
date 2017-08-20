@@ -380,6 +380,7 @@ export class BotFrameworkInstrumentation {
   }
 
   trackGoalTriggeredEvent(goalName:string, customProperties: IDictionary, session: builder.Session) {
+    customProperties = customProperties || {};
     customProperties['GoalName'] = goalName;
     this.logEvent(session, Events.GoalTriggeredEvent.name, customProperties);
   }
