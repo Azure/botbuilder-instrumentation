@@ -30,7 +30,7 @@ const instrumentation = require('botbuilder-instrumentation');
 
 // Setting up advanced instrumentation
 let logging = new instrumentation.BotFrameworkInstrumentation({ 
-  instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATIONKEY,
+  instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATION_KEY,
   sentiments: {
     key: process.env.CG_SENTIMENT_KEY,
   }
@@ -46,7 +46,7 @@ var instrumentation = require('botbuilder-instrumentation');
 
 // Setting up advanced instrumentation
 let logging = new instrumentation.BotFrameworkInstrumentation({ 
-  instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATIONKEY,
+  instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATION_KEY,
   sentiments: {
     key: process.env.CG_SENTIMENT_KEY,
   }
@@ -69,7 +69,7 @@ You can see how to implement a QnA service [here](https://github.com/Microsoft/B
 
 ```js
 let logger = new instrumentation.BotFrameworkInstrumentation({
-  instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATIONKEY,
+  instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATION_KEY,
   sentiments: {
     key: process.env.CG_SENTIMENT_KEY,
   },
