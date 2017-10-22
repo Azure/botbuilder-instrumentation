@@ -35,7 +35,7 @@ let logging = new instrumentation.BotFrameworkInstrumentation({
     key: process.env.CG_SENTIMENT_KEY,
   }
 });
-let recognizaer = new builder.LuisRecognizer('...');
+let recognizer = new builder.LuisRecognizer('...');
 logging.monitor(bot, recognizer);
 ``` 
 
