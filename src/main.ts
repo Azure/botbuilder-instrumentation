@@ -197,6 +197,7 @@ export class BotFrameworkInstrumentation {
         .start();
 
       //for all other custom events, traces etc, we are initiazling application insight clients accordignly.
+      this.appInsightsClients = [];
       let self = this;
       _.forEach(this.instrumentationKeys, (iKey) => {
         let client = ApplicationInsights.getClient(iKey);
@@ -377,6 +378,12 @@ export class BotFrameworkInstrumentation {
 
   trackEvent(customProperties: IDictionary, session: builder.Session = null) {
     this.trackCustomEvent(null, customProperties, session);
+  }
+
+  trackGoalTriggeredEvent(goalName:string, customProperties: IDictionary, session: builder.Session) {
+    customProperties = customProperties || {};
+    customProperties['GoalName'] = goalName;
+    this.logEvent(session, Events.GoalTriggeredEvent.name, customProperties);
   }
   
   private getLogProperties(session: builder.Session | builder.IMessage, properties?: IDictionary): any {

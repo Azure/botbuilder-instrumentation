@@ -134,6 +134,7 @@ class BotFrameworkInstrumentation {
                 .setAutoCollectPerformance(autoCollectOptions.autoCollectPerf || false)
                 .start();
             //for all other custom events, traces etc, we are initiazling application insight clients accordignly.
+            this.appInsightsClients = [];
             let self = this;
             _.forEach(this.instrumentationKeys, (iKey) => {
                 let client = ApplicationInsights.getClient(iKey);
@@ -280,6 +281,11 @@ class BotFrameworkInstrumentation {
     }
     trackEvent(customProperties, session = null) {
         this.trackCustomEvent(null, customProperties, session);
+    }
+    trackGoalTriggeredEvent(goalName, customProperties, session) {
+        customProperties = customProperties || {};
+        customProperties['GoalName'] = goalName;
+        this.logEvent(session, events_1.default.GoalTriggeredEvent.name, customProperties);
     }
     getLogProperties(session, properties) {
         if (session == null) {

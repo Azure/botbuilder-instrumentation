@@ -30,12 +30,12 @@ const instrumentation = require('botbuilder-instrumentation');
 
 // Setting up advanced instrumentation
 let logging = new instrumentation.BotFrameworkInstrumentation({ 
-  instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATIONKEY,
+  instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATION_KEY,
   sentiments: {
     key: process.env.CG_SENTIMENT_KEY,
   }
 });
-let recognizaer = new builder.LuisRecognizer('...');
+let recognizer = new builder.LuisRecognizer('...');
 logging.monitor(bot, recognizer);
 ``` 
 
@@ -46,7 +46,7 @@ var instrumentation = require('botbuilder-instrumentation');
 
 // Setting up advanced instrumentation
 let logging = new instrumentation.BotFrameworkInstrumentation({ 
-  instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATIONKEY,
+  instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATION_KEY,
   sentiments: {
     key: process.env.CG_SENTIMENT_KEY,
   }
@@ -69,7 +69,7 @@ You can see how to implement a QnA service [here](https://github.com/Microsoft/B
 
 ```js
 let logger = new instrumentation.BotFrameworkInstrumentation({
-  instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATIONKEY,
+  instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATION_KEY,
   sentiments: {
     key: process.env.CG_SENTIMENT_KEY,
   },
@@ -100,6 +100,9 @@ You can use any, all or none of the property bags under session: `userData`, `co
 
 ## Logging custom events
 
+You can track generic goal triggers, just like you would trigger a goal in Google Analytics for a web site. A triggered goal has a name and
+optionally custom properties that can be attached to the goal. Triggered goals can be seen in the Generic Goals Triggered dashboard template.
+
 ```js
 // This will show up as the event name in Application Insights.
 let customEventName = 'myCustomEventName';
@@ -114,6 +117,17 @@ logging.trackCustomEvent(customEventName, customEventData);
 
 // And you can log without an event name, in which case the event name will be 'MBFEvent.CustomEvent'
 logging.trackEvent(customEventData);
+```
+
+## Logging generic goal triggers
+
+```js
+// Custom key-value data. It will be avaiable under the customDimensions column in Application Insights.
+let customEventData = { customDataA: 'customValueA', customDataB: 3 };
+
+// goalName is the name of the goal you want to trigger. e.g. "Goal A". You log using context (session), in which case, session variables like timespan, userId etc will also be logged
+logging.trackGoalTriggeredEvent(goalName, customEventData, session); 
+
 ```
 
 You can see a working sample in [morsh/bot-with-instrumentation](https://github.com/morsh/bot-with-instrumentation)
