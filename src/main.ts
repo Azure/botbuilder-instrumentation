@@ -420,6 +420,9 @@ export class BotFrameworkInstrumentation {
       PROPERTY_BAGS.forEach(propertyBag => {
         let properties = this.customFields[propertyBag] || [];
         properties.forEach(property => {
+          if (Array.isArray(property)) {
+            item[property.join('.')] = _.get(session, [propertyBag, ...property], '');
+          }
           item[property] = session[propertyBag][property] || null;
         });
       });
