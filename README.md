@@ -84,7 +84,7 @@ let logger = new instrumentation.BotFrameworkInstrumentation({
     autoCollectRequests: true,
     autoCollectPerf: true // (auto collect performance)
   }
-
+  
   customFields: {
     userData: [ "CUSTOM_PROPERTY_1" ],
     dialogData: [ "CUSTOM_PROPERTY_2" ],
@@ -93,6 +93,8 @@ let logger = new instrumentation.BotFrameworkInstrumentation({
   }
 });
 ```
+
+The `CUSTOM_PROPERTY` could be a String or an Array. If it's an array it will as a path. [Lodash#get](https://lodash.com/docs#get)
 
 The `CUSTOM_PROPERTY` will be searched for in the session/context object of each event and will be added automatically under customDimensions in Application Insights.
 If it does not exist, it will not be added to the logged events.
