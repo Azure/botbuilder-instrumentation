@@ -421,9 +421,9 @@ export class BotFrameworkInstrumentation {
         let properties = this.customFields[propertyBag] || [];
         properties.forEach(property => {
           if (Array.isArray(property)) {
-            item[property.join('.')] = _.get(session, [propertyBag, ...property], '');
+            item[property[property.length-1]] = _.get(session, [propertyBag, ...property], null);
           }
-          item[property] = session[propertyBag][property] || null;
+          else item[property] = session[propertyBag][property] || null;
         });
       });
     }
