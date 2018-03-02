@@ -99,7 +99,7 @@ class BotFrameworkInstrumentation {
             body: {
                 "documents": [
                     {
-                        "language": "en",
+                        "language": session.preferredLocale().substring(0, 2) || "en",
                         "id": this.sentiments.id,
                         "text": text
                     }
