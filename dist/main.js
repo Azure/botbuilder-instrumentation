@@ -1,8 +1,17 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const util = require("util");
 const _ = require("lodash");
-const builder = require("botbuilder");
+const ai = require("botbuilder-ai");
+const core = require("botbuilder-core");
 const request = require("request");
 const ApplicationInsights = require("applicationinsights");
 const events_1 = require("./events");
@@ -82,7 +91,7 @@ class BotFrameworkInstrumentation {
             })();
         });
     }
-    collectSentiment(session, text) {
+    collectSentiment(context, text) {
         text = text || '';
         if (!this.sentiments.key)
             return;
@@ -107,7 +116,7 @@ class BotFrameworkInstrumentation {
             }
         }, (error, response, body) => {
             if (error) {
-                return this.logException(session, error);
+                return this.logException(context, error);
             }
             try {
                 let result = _.find(body.documents, { id: this.sentiments.id }) || {};
@@ -116,10 +125,10 @@ class BotFrameworkInstrumentation {
                     throw new Error('Could not collect sentiment');
                 }
                 var item = { text: text, score: score };
-                this.logEvent(session, events_1.default.Sentiment.name, item);
+                this.logEvent(context, events_1.default.Sentiment.name, item);
             }
             catch (error) {
-                return this.logException(session, error);
+                return this.logException(context, error);
             }
         });
     }
@@ -142,187 +151,136 @@ class BotFrameworkInstrumentation {
             });
         }
     }
-    monitor(bot, recognizer) {
+    monitor(adapter) {
         this.setupInstrumentation();
         // Adding middleware to intercept all user messages
-        if (bot) {
-            bot.use({
-                botbuilder: (session, next) => {
-                    try {
-                        let message = session.message;
-                        let item = {
-                            text: message.text,
-                            type: message.type
+        if (adapter) {
+            adapter.use({
+                onTurn: (context, next) => __awaiter(this, void 0, void 0, function* () {
+                    // User message
+                    if (context.activity.type == core.ActivityTypes.Message) {
+                        const activity = context.activity;
+                        const item = {
+                            text: activity.text,
+                            type: activity.type
                         };
-                        this.logEvent(session, events_1.default.UserMessage.name, item);
-                        self.collectSentiment(session, message.text);
+                        this.logEvent(context, events_1.default.UserMessage.name, item);
+                        // this could potentially become async
+                        this.collectSentiment(context, activity.text);
                     }
-                    catch (e) {
-                    }
-                    finally {
-                        next();
-                    }
-                },
-                send: (message, next) => {
-                    try {
-                        if (message.type == "message") {
-                            let item = {
-                                text: message.text,
-                                type: message.type
-                            };
-                            this.logEvent(message, events_1.default.BotMessage.name, item);
-                        }
-                    }
-                    catch (e) {
-                    }
-                    finally {
-                        next();
-                    }
-                }
+                    context.onSendActivities(this.onOutboundActivities.bind(this));
+                    context.onUpdateActivity((c, a, n) => this.onOutboundActivities(c, [a], n));
+                    return next();
+                })
             });
         }
-        // Collect intents collected from LUIS after entities were resolved
-        let self = this;
-        if (!recognizer) {
-            builder.IntentDialog.prototype.recognize = (() => {
-                let _recognize = builder.IntentDialog.prototype.recognize;
-                return function (session, cb) {
-                    let _dialog = this;
-                    _recognize.apply(_dialog, [session, (err, result) => {
-                            let message = session.message;
-                            let item = {
-                                text: message.text,
-                                intent: result && result.intent,
-                                score: result && result.score,
-                                withError: !err,
-                                error: err
-                            };
-                            //there is no point sending 0 score intents to the telemetry.
-                            if (item.score > 0) {
-                                self.logEvent(session, events_1.default.Intent.name, item);
-                            }
-                            // Tracking entities for the event
-                            if (result && result.entities) {
-                                result.entities.forEach(value => {
-                                    let entityItem = _.clone(item);
-                                    entityItem.entityType = value.type;
-                                    entityItem.entityValue = value.entity;
-                                    self.logEvent(session, events_1.default.Entity.name, entityItem);
-                                });
-                            }
-                            // Todo: on "set alarm" utterence, failiure
-                            return cb(err, result);
-                        }]);
-                };
-            })();
-        }
-        else {
-            recognizer.recognize = (() => {
-                let _recognize = recognizer.recognize;
-                return function (session, cb) {
-                    let _self = this;
-                    _recognize.apply(_self, [session, (err, result) => {
-                            let message = session.message;
-                            let item = {
-                                text: message.text,
-                                intent: result && result.intent,
-                                score: result && result.score,
-                                withError: !err,
-                                error: err
-                            };
-                            //there is no point sending 0 score intents to the telemetry.
-                            if (item.score > 0) {
-                                self.logEvent(session, events_1.default.Intent.name, item);
-                            }
-                            // Tracking entities for the event
-                            if (result && result.entities) {
-                                result.entities.forEach(value => {
-                                    let entityItem = _.clone(item);
-                                    entityItem.entityType = value.type;
-                                    entityItem.entityValue = value.entity;
-                                    self.logEvent(session, events_1.default.Entity.name, entityItem);
-                                });
-                            }
-                            // Todo: on "set alarm" utterence, failiure
-                            return cb(err, result);
-                        }]);
-                };
-            })();
-        }
     }
-    startTransaction(session, name = '') {
+    onOutboundActivities(context, activities, next) {
+        return __awaiter(this, void 0, void 0, function* () {
+            // Deliver activities
+            yield next();
+            yield Promise.all(activities.map((activity) => __awaiter(this, void 0, void 0, function* () {
+                // Bot message
+                if (activity.type == "message") {
+                    const item = {
+                        text: activity.text,
+                        type: activity.type
+                    };
+                    yield this.logEvent(context, events_1.default.BotMessage.name, item);
+                }
+                // LUIS recognizer trace
+                else if ((activity.type == core.ActivityTypes.Trace) &&
+                    (activity.name == 'LuisRecognizer')) {
+                    // Collect intents collected from LUIS after entities were resolved
+                    const recognizerResult = activity.value.recognizerResult;
+                    const topIntent = ai.LuisRecognizer.topIntent(recognizerResult);
+                    const result = topIntent !== 'None' ? recognizerResult.intents[topIntent] : null;
+                    let item = {
+                        text: context.activity.text,
+                        intent: topIntent,
+                        score: result && result.score,
+                    };
+                    //there is no point sending 0 score intents to the telemetry.
+                    if (item.score > 0) {
+                        this.logEvent(context, events_1.default.Intent.name, item);
+                    }
+                    // Tracking entities for the event
+                    if (result && result.entities) {
+                        result.entities.forEach(value => {
+                            let entityItem = _.clone(item);
+                            entityItem.entityType = value.type;
+                            entityItem.entityValue = value.entity;
+                            this.logEvent(context, events_1.default.Entity.name, entityItem);
+                        });
+                    }
+                }
+            })));
+        });
+    }
+    startTransaction(context, name = '') {
         let item = {
             name: name
         };
-        this.logEvent(session, events_1.default.StartTransaction.name, item);
+        this.logEvent(context, events_1.default.StartTransaction.name, item);
     }
-    endTransaction(session, name = '', successful = true) {
+    endTransaction(context, name = '', successful = true) {
         let item = {
             name: name,
             successful: successful.toString()
         };
-        this.logEvent(session, events_1.default.EndTransaction.name, item);
+        this.logEvent(context, events_1.default.EndTransaction.name, item);
     }
     /**
      * Logs QNA maker service data
      */
-    trackQNAEvent(session, userQuery, kbQuestion, kbAnswer, score) {
+    trackQNAEvent(context, userQuery, kbQuestion, kbAnswer, score) {
         let item = {
             score: score,
             userQuery: userQuery,
             kbQuestion: kbQuestion,
             kbAnswer: kbAnswer
         };
-        this.logEvent(session, events_1.default.QnaEvent.name, item);
+        this.logEvent(context, events_1.default.QnaEvent.name, item);
     }
-    trackCustomEvent(eventName, customProperties, session = null) {
+    trackCustomEvent(eventName, customProperties, context = null) {
         const logEventName = eventName || events_1.default.CustomEvent.name;
-        this.logEvent(session, logEventName, customProperties);
+        this.logEvent(context, logEventName, customProperties);
     }
-    trackEvent(customProperties, session = null) {
-        this.trackCustomEvent(null, customProperties, session);
+    trackEvent(customProperties, context = null) {
+        this.trackCustomEvent(null, customProperties, context);
     }
-    trackGoalTriggeredEvent(goalName, customProperties, session) {
+    trackGoalTriggeredEvent(goalName, customProperties, context) {
         customProperties = customProperties || {};
         customProperties['GoalName'] = goalName;
-        this.logEvent(session, events_1.default.GoalTriggeredEvent.name, customProperties);
+        this.logEvent(context, events_1.default.GoalTriggeredEvent.name, customProperties);
     }
-    getLogProperties(session, properties) {
-        if (session == null) {
+    getLogProperties(context, properties) {
+        if (context == null) {
             return properties || null;
         }
-        let message = {};
-        let isSession = false;
-        // Checking if the received object is a session or a message
-        if (session.message) {
-            isSession = true;
-            message = session.message;
-        }
-        else {
-            message = session;
-        }
-        let address = message.address || {};
-        let conversation = address.conversation || {};
-        let user = address.user || {};
+        const activity = context.activity;
+        const user = activity.from.role === 'user' ? activity.from : activity.recipient;
         let item = {
-            timestamp: message.timestamp,
-            channel: address.channelId,
-            conversationId: conversation.id,
+            timestamp: activity.timestamp,
+            channel: activity.channelId,
+            conversationId: activity.conversation.id,
             userId: user.id
         };
         if (!this.settings.omitUserName) {
             item.userName = user.name;
         }
         // Adding custom fields if supplied in the constructor settings
-        if (isSession && this.customFields) {
+        if (this.customFields) {
             PROPERTY_BAGS.forEach(propertyBag => {
                 let properties = this.customFields[propertyBag] || [];
                 properties.forEach(property => {
                     if (Array.isArray(property)) {
-                        item[property[property.length - 1]] = _.get(session, [propertyBag, ...property], null);
+                        //TODO: figgure this one out as well
+                        //item[property[property.length-1]] = _.get(session, [propertyBag, ...property], null);
                     }
+                    // TODO: how do we get session[propertyBag][property] ??
                     else
-                        item[property] = session[propertyBag][property] || null;
+                        item[property] = null; // session[propertyBag][property] || null;
                 });
             });
         }
@@ -333,8 +291,9 @@ class BotFrameworkInstrumentation {
      * @param name              A string to identify this event in the portal.
      * @param properties        map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
      */
-    logEvent(session, name, properties) {
-        let logProperties = this.getLogProperties(session, properties);
+    logEvent(context, name, properties) {
+        let logProperties = this.getLogProperties(context, properties);
+        console.log('logEvent', logProperties);
         this.appInsightsClients.forEach(client => client.trackEvent(name, logProperties));
     }
     /**
@@ -342,8 +301,8 @@ class BotFrameworkInstrumentation {
      * @param message        A string to identify this event in the portal.
      * @param properties     map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
      */
-    logTrace(session, message, severityLevel, properties) {
-        let logProperties = this.getLogProperties(session, properties);
+    logTrace(context, message, severityLevel, properties) {
+        let logProperties = this.getLogProperties(context, properties);
         this.appInsightsClients.forEach(client => client.trackTrace(message, severityLevel, logProperties));
     }
     /**
@@ -351,8 +310,8 @@ class BotFrameworkInstrumentation {
      * @param   exception   An Error from a catch clause, or the string error message.
      * @param   properties  map[string, string] - additional data used to filter events and metrics in the portal. Defaults to empty.
      */
-    logException(session, exception, properties) {
-        let logProperties = this.getLogProperties(session, properties);
+    logException(context, exception, properties) {
+        let logProperties = this.getLogProperties(context, properties);
         this.appInsightsClients.forEach(client => client.trackException(exception, logProperties));
     }
 }
