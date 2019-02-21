@@ -15,7 +15,6 @@ const core = require("botbuilder-core");
 const request = require("request");
 const ApplicationInsights = require("applicationinsights");
 const events_1 = require("./events");
-const PROPERTY_BAGS = ['userData', 'conversationData', 'privateConversationData', 'dialogData'];
 class BotFrameworkInstrumentation {
     constructor(settings) {
         this.appInsightsClients = [];
@@ -271,16 +270,14 @@ class BotFrameworkInstrumentation {
         }
         // Adding custom fields if supplied in the constructor settings
         if (this.customFields) {
-            PROPERTY_BAGS.forEach(propertyBag => {
-                let properties = this.customFields[propertyBag] || [];
+            this.customFields.forEach(({ store, properties = [] }) => {
+                let state = store.get(context);
                 properties.forEach(property => {
                     if (Array.isArray(property)) {
-                        //TODO: figgure this one out as well
-                        //item[property[property.length-1]] = _.get(session, [propertyBag, ...property], null);
+                        item[property[property.length - 1]] = _.get(state, property, null);
                     }
-                    // TODO: how do we get session[propertyBag][property] ??
                     else
-                        item[property] = null; // session[propertyBag][property] || null;
+                        item[property] = state[property] || null;
                 });
             });
         }

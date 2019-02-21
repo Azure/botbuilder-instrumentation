@@ -34,14 +34,11 @@ export interface IInstrumentationSettings {
 /**
  * This interface is used to pass custom fields to be logged from a session state array
  */
-export interface ICustomFields {
-  userData?: string[];
-  conversationData?: string[];
-  privateConversationData?: string[];
-  dialogData?: string[];
+interface ICustomField {
+  store: core.BotState
+  properties: [string | [string]]
 }
-
-const PROPERTY_BAGS = [ 'userData', 'conversationData', 'privateConversationData', 'dialogData' ];
+export interface ICustomFields extends Array<ICustomField> {}
 
 export class BotFrameworkInstrumentation {
 
@@ -361,17 +358,16 @@ export class BotFrameworkInstrumentation {
       item.userName = user.name;
     }
 
+
     // Adding custom fields if supplied in the constructor settings
     if (this.customFields) {
-      PROPERTY_BAGS.forEach(propertyBag => {
-        let properties = this.customFields[propertyBag] || [];
+      this.customFields.forEach(({ store, properties = []}) => {
+        let state = store.get(context)
         properties.forEach(property => {
           if (Array.isArray(property)) {
-            //TODO: figgure this one out as well
-            //item[property[property.length-1]] = _.get(session, [propertyBag, ...property], null);
+            item[property[property.length-1]] = _.get(state, property, null);
           }
-          // TODO: how do we get session[propertyBag][property] ??
-          else item[property] = null // session[propertyBag][property] || null;
+          else item[property] = state[property] || null;
         });
       });
     }
