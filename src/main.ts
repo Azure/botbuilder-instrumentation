@@ -213,6 +213,13 @@ export class BotFrameworkInstrumentation {
     if (adapter) {
       adapter.use({
         onTurn: async (context: core.TurnContext, next: () => Promise<any>) => {
+          context.onSendActivities(this.onOutboundActivities.bind(this))
+          context.onUpdateActivity((c, a, n) => this.onOutboundActivities(c, [a], n))
+
+          // Let bot process activity first, so when logging event we have state
+          // stores loaded
+          await next();
+
           // User message
           if (context.activity.type == core.ActivityTypes.Message) {
             const activity = context.activity;
@@ -226,11 +233,6 @@ export class BotFrameworkInstrumentation {
             // this could potentially become async
             this.collectSentiment(context, activity.text);
           }
-
-          context.onSendActivities(this.onOutboundActivities.bind(this))
-          context.onUpdateActivity((c, a, n) => this.onOutboundActivities(c, [a], n))
-
-          return next();
         }
       });
     }
@@ -382,7 +384,6 @@ export class BotFrameworkInstrumentation {
    */
   private logEvent(context: core.TurnContext, name: string, properties?: IDictionary): void   {
     let logProperties =  this.getLogProperties(context, properties);
-    console.log('logEvent', logProperties)
     this.appInsightsClients.forEach(client => client.trackEvent(name, logProperties));
   }
 

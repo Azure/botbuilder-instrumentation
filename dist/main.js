@@ -156,6 +156,11 @@ class BotFrameworkInstrumentation {
         if (adapter) {
             adapter.use({
                 onTurn: (context, next) => __awaiter(this, void 0, void 0, function* () {
+                    context.onSendActivities(this.onOutboundActivities.bind(this));
+                    context.onUpdateActivity((c, a, n) => this.onOutboundActivities(c, [a], n));
+                    // Let bot process activity first, so when logging event we have state
+                    // stores loaded
+                    yield next();
                     // User message
                     if (context.activity.type == core.ActivityTypes.Message) {
                         const activity = context.activity;
@@ -167,9 +172,6 @@ class BotFrameworkInstrumentation {
                         // this could potentially become async
                         this.collectSentiment(context, activity.text);
                     }
-                    context.onSendActivities(this.onOutboundActivities.bind(this));
-                    context.onUpdateActivity((c, a, n) => this.onOutboundActivities(c, [a], n));
-                    return next();
                 })
             });
         }
@@ -290,7 +292,6 @@ class BotFrameworkInstrumentation {
      */
     logEvent(context, name, properties) {
         let logProperties = this.getLogProperties(context, properties);
-        console.log('logEvent', logProperties);
         this.appInsightsClients.forEach(client => client.trackEvent(name, logProperties));
     }
     /**
