@@ -136,14 +136,14 @@ export class BotFrameworkInstrumentation {
     });
   }
   
-  private collectSentiment(context: core.TurnContext, text: string) {
+  private async collectSentiment(context: core.TurnContext, text: string) {
 
     text = text || '';
 
     if (!this.sentiments.key) return;
     if (text.match(/\S+/g).length < this.sentiments.minWords) return;
     
-    request({
+    return new Promise((resolve, reject) => { request({
       url: this.sentiments.url,
       method: 'POST',
       headers: {
@@ -160,14 +160,14 @@ export class BotFrameworkInstrumentation {
           }
         ]
       }
-    }, 
-    (error, response, body) => {
-
+    }, (error, response, body) => {
       if (error) {
-        return this.logException(context, error);
+        reject(error);
+        return;
       }
-
-      try {
+      resolve(body)
+    }) })
+      .then((body: any) => {
         let result: any = _.find(body.documents, { id: this.sentiments.id }) || {};
         var score = result.score || null;
 
@@ -178,10 +178,7 @@ export class BotFrameworkInstrumentation {
         var item = { text: text, score: score };
 
         this.logEvent(context, Events.Sentiment.name, item);
-      } catch (error) {
-        return this.logException(context, error);
-      }
-    });
+      });
   }
 
   private setupInstrumentation() {
@@ -230,8 +227,9 @@ export class BotFrameworkInstrumentation {
             };
 
             this.logEvent(context, Events.UserMessage.name, item);
-            // this could potentially become async
-            this.collectSentiment(context, activity.text);
+
+            await this.collectSentiment(context, activity.text)
+              .catch(error => { this.logException(context, error) })
           }
         }
       });

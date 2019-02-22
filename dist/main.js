@@ -91,33 +91,39 @@ class BotFrameworkInstrumentation {
         });
     }
     collectSentiment(context, text) {
-        text = text || '';
-        if (!this.sentiments.key)
-            return;
-        if (text.match(/\S+/g).length < this.sentiments.minWords)
-            return;
-        request({
-            url: this.sentiments.url,
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Ocp-Apim-Subscription-Key': this.sentiments.key
-            },
-            json: true,
-            body: {
-                "documents": [
-                    {
-                        "language": "en",
-                        "id": this.sentiments.id,
-                        "text": text
+        return __awaiter(this, void 0, void 0, function* () {
+            text = text || '';
+            if (!this.sentiments.key)
+                return;
+            if (text.match(/\S+/g).length < this.sentiments.minWords)
+                return;
+            return new Promise((resolve, reject) => {
+                request({
+                    url: this.sentiments.url,
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Ocp-Apim-Subscription-Key': this.sentiments.key
+                    },
+                    json: true,
+                    body: {
+                        "documents": [
+                            {
+                                "language": "en",
+                                "id": this.sentiments.id,
+                                "text": text
+                            }
+                        ]
                     }
-                ]
-            }
-        }, (error, response, body) => {
-            if (error) {
-                return this.logException(context, error);
-            }
-            try {
+                }, (error, response, body) => {
+                    if (error) {
+                        reject(error);
+                        return;
+                    }
+                    resolve(body);
+                });
+            })
+                .then((body) => {
                 let result = _.find(body.documents, { id: this.sentiments.id }) || {};
                 var score = result.score || null;
                 if (isNaN(score)) {
@@ -125,10 +131,7 @@ class BotFrameworkInstrumentation {
                 }
                 var item = { text: text, score: score };
                 this.logEvent(context, events_1.default.Sentiment.name, item);
-            }
-            catch (error) {
-                return this.logException(context, error);
-            }
+            });
         });
     }
     setupInstrumentation() {
@@ -169,8 +172,8 @@ class BotFrameworkInstrumentation {
                             type: activity.type
                         };
                         this.logEvent(context, events_1.default.UserMessage.name, item);
-                        // this could potentially become async
-                        this.collectSentiment(context, activity.text);
+                        yield this.collectSentiment(context, activity.text)
+                            .catch(error => { this.logException(context, error); });
                     }
                 })
             });
