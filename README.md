@@ -35,24 +35,8 @@ let logging = new instrumentation.BotFrameworkInstrumentation({
     key: process.env.CG_SENTIMENT_KEY,
   }
 });
-let recognizer = new builder.LuisRecognizer('...');
-logging.monitor(bot, recognizer);
+logging.monitor(adapter, recognizer);
 ``` 
-
-If you're not using a `LuisRecognizer', use the following code in addition:
-
-```js
-var instrumentation = require('botbuilder-instrumentation');
-
-// Setting up advanced instrumentation
-let logging = new instrumentation.BotFrameworkInstrumentation({ 
-  instrumentationKey: process.env.APPINSIGHTS_INSTRUMENTATION_KEY,
-  sentiments: {
-    key: process.env.CG_SENTIMENT_KEY,
-  }
-});
-logging.monitor(bot);
-```
 
 Although `CG_SENTIMENT_KEY` is optional, it is recommended if you're using [Ibex Dashboard](https://github.com/CatalystCode/ibex-dashboard), in which case, adding sentiment analysis will add sentiments overview to the dashboard along with a sentiment icon next to all conversations.
 
@@ -66,6 +50,13 @@ logging.trackQNAEvent(context, userQuery, kbQuestion, kbAnswer, score);
 You can see how to implement a QnA service [here](https://github.com/Microsoft/BotBuilder-CognitiveServices/tree/master/Node/samples/QnAMakerWithFunctionOverrides).
 
 ## Additional settings
+
+Following configuration assumes that you are using user and conversation state storage.
+
+```js
+let userState = new UserState(myStorage)
+let conversationState = new ConversationState(myStorage)
+```
 
 ```js
 let logger = new instrumentation.BotFrameworkInstrumentation({
@@ -85,20 +76,18 @@ let logger = new instrumentation.BotFrameworkInstrumentation({
     autoCollectPerf: true // (auto collect performance)
   }
   
-  customFields: {
-    userData: [ "CUSTOM_PROPERTY_1" ],
-    dialogData: [ "CUSTOM_PROPERTY_2" ],
-    conversationData: [ "CUSTOM_PROPERTY_3" ],
-    privateConversationData: [ "CUSTOM_PROPERTY_4" ]
-  }
+  customFields: [
+    { store: userState, properties: ["CUSTOM_PROPERTY_1"] },
+    { store: conversationState, properties: [ "CUSTOM_PROPERTY_2" ] },
+  ]
 });
 ```
 
 The `CUSTOM_PROPERTY` could be a String or an Array. If it's an array it will as a path. [Lodash#get](https://lodash.com/docs#get)
 
-The `CUSTOM_PROPERTY` will be searched for in the session/context object of each event and will be added automatically under customDimensions in Application Insights.
+The `CUSTOM_PROPERTY` will be searched for in the context object of each event and will be added automatically under customDimensions in Application Insights.
 If it does not exist, it will not be added to the logged events.
-You can use any, all or none of the property bags under session: `userData`, `conversationData`, `privateConversationData`, `dialogData`.
+You can use any of state managers that inherit from `BotState`
 
 ## Logging custom events
 
@@ -111,11 +100,11 @@ let customEventName = 'myCustomEventName';
 // Custom key-value data. It will be avaiable under the customDimensions column in Application Insights.
 let customEventData = { customDataA: 'customValueA', customDataB: 3 };
 
-// You can log using context (session), in which case, session variables like timespan, userId etc will also be logged
-logging.trackCustomEvent(customEventName, customEventData, session); 
+// You can log using context, in which case, session variables like timespan, userId etc will also be logged
+logging.trackCustomEvent(customEventName, customEventData, turnContext);
 
-// You can log without a session/context
-logging.trackCustomEvent(customEventName, customEventData); 
+// You can log without a context
+logging.trackCustomEvent(customEventName, customEventData);
 
 // And you can log without an event name, in which case the event name will be 'MBFEvent.CustomEvent'
 logging.trackEvent(customEventData);
@@ -127,12 +116,12 @@ logging.trackEvent(customEventData);
 // Custom key-value data. It will be avaiable under the customDimensions column in Application Insights.
 let customEventData = { customDataA: 'customValueA', customDataB: 3 };
 
-// goalName is the name of the goal you want to trigger. e.g. "Goal A". You log using context (session), in which case, session variables like timespan, userId etc will also be logged
-logging.trackGoalTriggeredEvent(goalName, customEventData, session); 
+// goalName is the name of the goal you want to trigger. e.g. "Goal A". You log using context, in which case, variables like timespan, userId etc will also be logged
+logging.trackGoalTriggeredEvent(goalName, customEventData, turnContext); 
 
 ```
 
-You can see a working sample in [morsh/bot-with-instrumentation](https://github.com/morsh/bot-with-instrumentation)
+You can see a working sample for older, v3 of botrframework-js in [morsh/bot-with-instrumentation](https://github.com/morsh/bot-with-instrumentation)
 
 ## License
 This project is licensed under the MIT License.
